@@ -8,6 +8,7 @@ hacia Detector de Palmas, Segmentador de Palmas, Optimizador de Acopios y
 el futuro Asistente LLM/MCP.
 """
 
+import logging
 import os
 from qgis.PyQt.QtCore import Qt, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
@@ -32,7 +33,8 @@ class ToolkitPalm:
             from .detector.worker import cleanup_plugin_cache_and_logs
             cleanup_plugin_cache_and_logs()
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
     def tr(self, message):
         return QCoreApplication.translate("ToolkitPalm", message)

@@ -85,5 +85,6 @@ class DescargaRecurso(QThread):
             try:
                 os.remove(parcial)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
             self.listo.emit("")

@@ -61,7 +61,8 @@ def write_log(message):
             with open('plugin_error.log', 'a', encoding='utf-8') as f:
                 f.write(f"Error en write_log: {str(e)}\n")
         except:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
 # Crear logger dummy para compatibilidad
 class DummyLogger:
@@ -844,7 +845,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer and mime_data.hasFormat('application/qgis.layertree.layerdefinitions'):
                 try:
@@ -857,7 +859,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer:
                 layer = self.iface.activeLayer()
@@ -892,7 +895,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer and mime_data.hasFormat('application/qgis.layertree.layerdefinitions'):
                 try:
@@ -905,7 +909,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer:
                 layer = self.iface.activeLayer()
@@ -2308,9 +2313,15 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         proyecto = QgsProject.instance()
         for layer in proyecto.mapLayers().values():
             try:
-                if layer.type() != layer.VectorLayer or layer.geometryType() != QgsWkbTypes.PointGeometry:
-                    continue
+                es_de_puntos = (layer.type() == layer.VectorLayer
+                                and layer.geometryType() == QgsWkbTypes.PointGeometry)
             except Exception:
+                # Una capa rota o de un tipo inesperado no debe cortar el
+                # recorrido: simplemente no se tiene en cuenta.
+                logging.getLogger(__name__).debug(
+                    "No se pudo determinar el tipo de la capa; se omite.", exc_info=True)
+                es_de_puntos = False
+            if not es_de_puntos:
                 continue
 
             nombre = layer.name()
@@ -2654,7 +2665,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                     if self.saved_lot_layer:
                         QgsProject.instance().removeMapLayer(self.saved_lot_layer.id())
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
                 delattr(self, 'saved_lot_layer')
             
             if hasattr(self, 'saved_azimuth'):
@@ -5011,7 +5023,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             try:
                 shell.show()
             except RuntimeError:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
 
     def show_edit_palms_toolbar(self):
         # El desplegable manda: si el usuario eligió una capa ahí, se edita esa,
@@ -5030,7 +5043,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             try:
                 self._active_edit_toolbar.deleteLater()
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
             self._active_edit_toolbar = None
         if hasattr(self, 'editPalmsButton'):
             self.editPalmsButton.setEnabled(False)
@@ -5778,7 +5792,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 if hasattr(self, '_popup_selection_connected') and self._popup_selection_connected:
                     self.iface.mapCanvas().selectionChanged.disconnect(self.on_palm_selected_for_popup)
             except:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
             
             # Conectar evento de selección
             self.iface.mapCanvas().selectionChanged.connect(self.on_palm_selected_for_popup)
@@ -6561,7 +6576,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             try:
                 getter().disconnect(slot)
             except (TypeError, RuntimeError, AttributeError):
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
 
     def _on_active_layer_changed(self, layer):
         """Habilita editPalmsButton y activatePalmNumberingButton según la capa activa."""
@@ -6994,7 +7010,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             simbolo_marcado.symbolLayer(0).setStrokeColor(QColor(120, 60, 0))
             simbolo_marcado.symbolLayer(0).setStrokeWidth(0.6)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         regla_marcado = QgsRuleBasedRenderer.Rule(
             simbolo_marcado, 0, 0, f"$id IN ({lista_ids})", "Posible desviación (revisar)"
         )
@@ -7585,7 +7602,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         try:
             self.iface.mapCanvas().refreshAllLayers()
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
     def closeEvent(self, event):
         logger.info("Cerrando el plugin")

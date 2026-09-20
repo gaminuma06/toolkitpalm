@@ -41,13 +41,15 @@ def _get_raster_dimensions(raster_path):
             ds = None
             return w, h
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
     try:
         import rasterio
         with rasterio.open(raster_path) as src:
             return src.width, src.height
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
     return None, None
 
 
@@ -251,7 +253,8 @@ def _setup_logging():
             log_file = os.path.join(user_temp_dir, 'client.log')
         handlers.append(logging.FileHandler(log_file, encoding='utf-8'))
     except (PermissionError, OSError):
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -1642,7 +1645,8 @@ class LocalSegmentador:
                                         error_json = result_response.json()
                                         error_detail = error_json.get('detail', error_detail)
                                     except:
-                                        pass
+                                        logging.getLogger(__name__).debug(
+                                            "Fallo no crítico; se continúa.", exc_info=True)
                                     raise Exception(f"Error descargando resultado después de {max_result_retries} intentos: {result_response.status_code} - {error_detail}")
                         
                         except requests.exceptions.RequestException as e:
@@ -2217,7 +2221,8 @@ def run_segmentation(dockwidget):
             try:
                 progress_dialog.close()
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
         QMessageBox.information(dockwidget, "Proceso cancelado", "La segmentación fue cancelada. Puede iniciar una nueva cuando lo desee.")
         return
 

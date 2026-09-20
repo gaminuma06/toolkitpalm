@@ -55,7 +55,8 @@ def _procesar_eventos_si_hilo_principal():
         if app is not None and QThread.currentThread() == app.thread():
             QApplication.processEvents()
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
 
 
 def _ruta_estado_pendiente(lotes_path, lot_id):
@@ -65,7 +66,11 @@ def _ruta_estado_pendiente(lotes_path, lot_id):
     aunque se cambie la carpeta de resultados entre corridas.
     """
     import hashlib
-    clave = hashlib.md5(f"{os.path.abspath(lotes_path)}|{lot_id}".encode("utf-8")).hexdigest()[:12]
+    # Resumen corto del lote para nombrar el archivo de avance. No cumple
+    # ninguna función de seguridad: solo evita que dos lotes distintos
+    # escriban en el mismo archivo.
+    clave = hashlib.sha256(
+        f"{os.path.abspath(lotes_path)}|{lot_id}".encode("utf-8")).hexdigest()[:12]
     return os.path.join(PENDIENTES_DIR, f"lote_{lot_id}_{clave}.json")
 
 
@@ -328,7 +333,8 @@ class LocalDetector:
             try:
                 distance_area.setEllipsoid(QgsProject.instance().ellipsoid())
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
 
             # Tomar CRS de origen válido; si no, usar CRS del proyecto
             source_crs = crs if crs and crs.isValid() else QgsProject.instance().crs()
@@ -1542,7 +1548,8 @@ class LocalDetector:
             try:
                 shutil.rmtree(temp_dir, ignore_errors=True)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
 
     def _procesar_bloque(self, indice, piece_geom, image_path, temp_dir, target_crs):
         """
@@ -2085,7 +2092,8 @@ class LocalDetector:
                                         error_json = result_response.json()
                                         error_detail = error_json.get('detail', error_detail)
                                     except:
-                                        pass
+                                        logging.getLogger(__name__).debug(
+                                            "Fallo no crítico; se continúa.", exc_info=True)
                                     raise Exception(f"Error descargando resultado después de {max_result_retries} intentos: {result_response.status_code} - {error_detail}")
                         
                         except requests.exceptions.RequestException as e:

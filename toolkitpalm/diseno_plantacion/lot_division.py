@@ -18,6 +18,7 @@ finca antes de dar por buena la Fase 1):
   filas (a lo largo del rumbo); se recorta contra el polígono real del predio,
   así que los lotes de borde salen irregulares — tal como se pidió.
 """
+import logging
 import math
 
 import numpy as np
@@ -443,4 +444,6 @@ def _style_layer(layer, fill_rgba, outline_rgba):
         layer.renderer().setSymbol(symbol)
         layer.triggerRepaint()
     except Exception:
-        pass  # el estilo es cosmético: si falla, no debe tumbar la generación
+        # El estilo es cosmético: si falla, no debe tumbar la generación.
+        logging.getLogger(__name__).debug(
+            "No se pudo aplicar el estilo a la capa.", exc_info=True)

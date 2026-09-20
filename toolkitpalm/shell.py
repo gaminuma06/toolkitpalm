@@ -9,6 +9,7 @@ solo se instancian de forma perezosa y se embeben como página de un
 QStackedWidget en vez de agregarse como dock flotante propio.
 """
 
+import logging
 import os
 import base64
 import html
@@ -293,7 +294,8 @@ class ToolkitPalmDockWidget(QDockWidget):
                 try:
                     owner.disconnect_global_signals()
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
 
     # ------------------------------------------------------------------
     # Construcción de la interfaz
@@ -472,7 +474,8 @@ class ToolkitPalmDockWidget(QDockWidget):
                     and getattr(self, "_overlay_login", None)):
                 self._overlay_login.setGeometry(self._full_body.rect())
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         return super().eventFilter(objeto, evento)
 
     def _sincronizar_overlay_login(self):
@@ -541,7 +544,8 @@ class ToolkitPalmDockWidget(QDockWidget):
                 try:
                     detalle = respuesta.json().get("detail", detalle)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
                 QMessageBox.warning(self, "No se pudo regalar", str(detalle))
         except Exception as e:
             QMessageBox.warning(self, "No se pudo regalar", f"Error de conexión: {e}")
@@ -558,7 +562,8 @@ class ToolkitPalmDockWidget(QDockWidget):
                 if token:
                     cabeceras["Authorization"] = f"Bearer {token}"
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
         try:
             respuesta = requests.post(url, headers=cabeceras, data=datos, timeout=timeout)
             if respuesta.status_code == 200:
@@ -567,7 +572,8 @@ class ToolkitPalmDockWidget(QDockWidget):
             try:
                 detalle = respuesta.json().get("detail", detalle)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
             return False, str(detalle)
         except Exception as e:
             return False, f"Error de conexión: {e}"
@@ -645,7 +651,8 @@ class ToolkitPalmDockWidget(QDockWidget):
                 "ToolkitPalm", mensaje, level=niveles.get(nivel, Qgis.Info),
                 duration=segundos)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
     def _on_canjear_codigo(self):
         """Canjea un código de créditos o descuento (disponible para cualquier usuario)."""

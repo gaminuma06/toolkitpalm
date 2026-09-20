@@ -31,6 +31,7 @@ Qué se adaptó y qué no:
   es la pestaña "Asistente" de shell.py.
 """
 
+import logging
 import base64
 import contextlib
 import errno
@@ -224,7 +225,7 @@ from .compat import (
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 9876
 
-_CLAVE_TOKEN = "toolkitpalm/assistant/mcp_token"
+_AJUSTE_ACCESO_MCP = "toolkitpalm/assistant/mcp_token"
 
 
 def token_de_esta_instalacion(regenerar: bool = False) -> str:
@@ -243,10 +244,10 @@ def token_de_esta_instalacion(regenerar: bool = False) -> str:
     from qgis.PyQt.QtCore import QSettings
 
     ajustes = QSettings()
-    token = "" if regenerar else str(ajustes.value(_CLAVE_TOKEN, "", type=str) or "")
+    token = "" if regenerar else str(ajustes.value(_AJUSTE_ACCESO_MCP, "", type=str) or "")
     if not token:
         token = secrets.token_urlsafe(24)
-        ajustes.setValue(_CLAVE_TOKEN, token)
+        ajustes.setValue(_AJUSTE_ACCESO_MCP, token)
     return token
 # "someone else already holds this port". EADDRINUSE is the usual answer, and is
 # what a second QGIS window gets since both sides set SO_EXCLUSIVEADDRUSE. Windows
@@ -456,7 +457,8 @@ class QgisMCPServer(QObject):
                     else:
                         self._disconnect_client(client_sock)
                 except BlockingIOError:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
                 except Exception as e:
                     self._disconnect_client(client_sock, f"Error with client: {e!s}", MSG_WARNING)
 

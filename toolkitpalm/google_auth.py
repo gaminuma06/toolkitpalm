@@ -44,7 +44,7 @@ _ALCANCES = "openid email profile"
 
 _CLAVE_REFRESH = "ToolkitPalm/google_refresh_token"
 _CLAVE_PERFIL = "ToolkitPalm/google_perfil"       # JSON: sub, email, name
-_CLAVE_ID_TOKEN = "ToolkitPalm/google_id_token"
+_AJUSTE_SESION_ID = "ToolkitPalm/google_id_token"
 _CLAVE_EXPIRA = "ToolkitPalm/google_id_token_expira"  # epoch en segundos
 
 
@@ -75,7 +75,8 @@ def _pedir_al_servidor(accion: str, datos: dict) -> dict:
         try:
             detalle = respuesta.json().get("detail", detalle)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         raise Exception(f"No se pudo completar el inicio de sesión: {detalle}")
     return respuesta.json()
 
@@ -143,7 +144,7 @@ def _guardar_sesion(respuesta: dict):
     ajustes = QSettings()
     id_token = respuesta.get("id_token", "")
     if id_token:
-        ajustes.setValue(_CLAVE_ID_TOKEN, id_token)
+        ajustes.setValue(_AJUSTE_SESION_ID, id_token)
         ajustes.setValue(_CLAVE_EXPIRA, time.time() + int(respuesta.get("expires_in", 3600)) - 60)
         datos = _leer_payload_id_token(id_token)
         ajustes.setValue(_CLAVE_PERFIL, json.dumps({
@@ -208,7 +209,8 @@ def iniciar_sesion(timeout_segundos: int = 180, al_esperar=None):
     try:
         servidor.server_close()
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
 
     if _ManejadorRedireccion.error:
         raise Exception(f"Google rechazó el inicio de sesión: {_ManejadorRedireccion.error}")
@@ -242,7 +244,7 @@ def sesion_activa() -> bool:
 
 def cerrar_sesion():
     ajustes = QSettings()
-    for clave in (_CLAVE_REFRESH, _CLAVE_PERFIL, _CLAVE_ID_TOKEN, _CLAVE_EXPIRA):
+    for clave in (_CLAVE_REFRESH, _CLAVE_PERFIL, _AJUSTE_SESION_ID, _CLAVE_EXPIRA):
         ajustes.remove(clave)
 
 
@@ -254,7 +256,7 @@ def obtener_id_token():
     hay sesión o si no se pudo renovar.
     """
     ajustes = QSettings()
-    token = ajustes.value(_CLAVE_ID_TOKEN, "", type=str)
+    token = ajustes.value(_AJUSTE_SESION_ID, "", type=str)
     expira = ajustes.value(_CLAVE_EXPIRA, 0.0, type=float)
     if token and time.time() < expira:
         return token
@@ -265,7 +267,7 @@ def obtener_id_token():
 
     try:
         _guardar_sesion(_pedir_al_servidor("refrescar", {"refresh_token": refresh}))
-        return ajustes.value(_CLAVE_ID_TOKEN, "", type=str) or None
+        return ajustes.value(_AJUSTE_SESION_ID, "", type=str) or None
     except Exception as e:
         logger.warning(f"Error renovando la sesión de Google: {e}")
         return None

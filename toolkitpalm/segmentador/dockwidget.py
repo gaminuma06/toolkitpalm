@@ -93,7 +93,8 @@ def _resolve_path_for_validation(path, iface=None):
                 if os.path.exists(candidate):
                     return candidate
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
     # 3) Normalizar y absoluta (relativas al directorio actual o al proyecto)
     try:
         normalized = os.path.normpath(path)
@@ -107,7 +108,8 @@ def _resolve_path_for_validation(path, iface=None):
             if os.path.exists(with_project):
                 return with_project
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
     # 4) Si hay iface, buscar capa en el proyecto cuya source coincida (o sea la misma ruta resuelta)
     if iface:
         try:
@@ -123,7 +125,8 @@ def _resolve_path_for_validation(path, iface=None):
                 if os.path.basename(src) == os.path.basename(path) and os.path.exists(src):
                     return src
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
     return None
 
 
@@ -803,7 +806,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer and mime_data.hasFormat('application/qgis.layertree.layerdefinitions'):
                 try:
@@ -816,7 +820,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer:
                 layer = self.iface.activeLayer()
@@ -877,7 +882,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer and mime_data.hasFormat('application/qgis.layertree.layerdefinitions'):
                 try:
@@ -890,7 +896,8 @@ class DropLineEdit(QLineEdit):
                             if layer:
                                 break
                 except:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             
             if not layer:
                 layer = self.iface.activeLayer()
@@ -1225,7 +1232,8 @@ class EraseMaskTool(QgsMapTool):
                 self.ds.FlushCache()
                 self.ds = None
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         super().deactivate()
 
 
@@ -1914,7 +1922,8 @@ class SegmentadorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         try:
             self.iface.mapCanvas().selectionChanged.disconnect(self.on_selection_changed)
         except (TypeError, RuntimeError, AttributeError):
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
     def on_selection_changed(self):
         """
@@ -2048,7 +2057,8 @@ class SegmentadorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                         lotes_layer = layer
                         break
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
 
             if lotes_layer is None:
                 logger.error("La capa de lotes no está cargada en el panel de capas")

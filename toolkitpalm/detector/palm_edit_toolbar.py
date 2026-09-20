@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import logging
 from qgis.PyQt.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
                                   QLabel, QLineEdit, QMessageBox)
 from qgis.PyQt.QtCore import Qt, pyqtSignal
@@ -461,7 +462,8 @@ class PalmEditToolbar(QWidget):
         try:
             self.layer.geometryChanged.disconnect(self._on_geom_changed)
         except TypeError:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         self.layer.geometryChanged.connect(self._on_geom_changed)
 
     def _on_geom_changed(self, fid, geometry):
@@ -488,7 +490,8 @@ class PalmEditToolbar(QWidget):
         try:
             self.layer.geometryChanged.disconnect(self._on_geom_changed)
         except TypeError:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         if self._prev_tool is not None:
             self.canvas.setMapTool(self._prev_tool)
         else:
@@ -497,7 +500,8 @@ class PalmEditToolbar(QWidget):
             self.iface.mainWindow().statusBar().showMessage(
                 "Palmas guardadas correctamente", 3000)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         self.closed.emit()
         self.hide()
         self.deleteLater()

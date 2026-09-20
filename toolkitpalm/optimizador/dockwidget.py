@@ -489,11 +489,13 @@ class OptimizadorAcopiosDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         try:
             project.layersAdded.connect(self._on_project_layers_changed)
         except AttributeError:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         try:
             project.layersRemoved.connect(self._on_project_layers_changed)
         except AttributeError:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
     def _on_project_layers_changed(self, *args):
         """Refresca los combos de capas cuando se añaden o quitan capas en el proyecto (con delay para que el árbol se actualice)."""
@@ -871,13 +873,15 @@ class OptimizadorAcopiosDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             if dir_path and os.path.isdir(dir_path):
                 return dir_path
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         try:
             project_path = QgsProject.instance().fileName()
             if project_path:
                 return os.path.dirname(project_path)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         return os.path.expanduser("~")
 
     def _sanitize_fid_field(self, layer):
@@ -932,7 +936,8 @@ class OptimizadorAcopiosDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             try:
                 os.remove(path)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
             raise RuntimeError(err_msg or "Error exportando capa a GPKG")
         return path
 
@@ -1216,11 +1221,13 @@ class OptimizadorAcopiosDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                     if path:
                         os.remove(path)
                 except Exception:
-                    pass
+                    logging.getLogger(__name__).debug(
+                        "Fallo no crítico; se continúa.", exc_info=True)
             try:
                 os.rmdir(tmp_dir)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
 
             progress.setLabelText("Procesando respuesta...")
             QtWidgets.QApplication.processEvents()
@@ -1264,7 +1271,8 @@ class OptimizadorAcopiosDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             try:
                 os.remove(zip_path)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
 
             opt_points_path = os.path.join(results_dir, "optimal_collection_points.gpkg")
             sublots_path = os.path.join(results_dir, "sublot_assignments.gpkg")

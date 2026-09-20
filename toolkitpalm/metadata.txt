@@ -5,7 +5,7 @@
 name=ToolkitPalm
 qgisMinimumVersion=3.16
 description=Detect and segment oil palm trees and optimise collection points on drone orthomosaics.
-version=1.0.0
+version=1.0.1
 author=Ing. Adán Arias
 email=ingarias9006@gmail.com
 
@@ -31,7 +31,14 @@ homepage=https://github.com/gaminuma06/toolkitpalm
 # Recommended items:
 hasProcessingProvider=no
 
-changelog=1.0.0 - First public release.
+changelog=1.0.1 - Correcciones del análisis de seguridad del repositorio de QGIS.
+    - Los errores que antes se descartaban en silencio ahora quedan registrados,
+      para poder diagnosticarlos.
+    - El resumen que nombra los archivos de avance pasa de MD5 a SHA-256.
+    - La conexión con asistentes (MCP) exige una clave de acceso propia de cada
+      instalación y escucha solo en el equipo local.
+    .
+    1.0.0 - First public release.
     - Three tools unified in a single searchable panel.
     - Sign-in with a Google account (OAuth 2.0 with PKCE); the plugin stores no
       passwords and embeds no secrets.

@@ -4,6 +4,7 @@ Configuración única de ToolkitPalm (detector + segmentador + optimizador).
 Apunta al backend propio (proyecto_replicacion/backend), desarrollado de forma independiente.
 """
 
+import logging
 import os
 
 # URL base del backend propio. Por defecto apunta al backend alojado en Google
@@ -38,7 +39,8 @@ try:
     if _AUTH_KEY:
         AUTH_API_KEY = _AUTH_KEY
 except Exception:
-    pass
+    logging.getLogger(__name__).debug(
+        "Fallo no crítico; se continúa.", exc_info=True)
 
 # --- Endpoints de autenticación (backend: app/auth/router.py). Un solo flujo, sin
 # distinguir tipos de usuario: cualquiera que esté registrado puede usar la herramienta. ---
@@ -73,14 +75,16 @@ try:
     if _ANTHROPIC_KEY:
         ANTHROPIC_API_KEY = _ANTHROPIC_KEY
 except Exception:
-    pass
+    logging.getLogger(__name__).debug(
+        "Fallo no crítico; se continúa.", exc_info=True)
 
 try:
     from .config_secrets import ASSISTANT_CUSTOM_API_KEY as _CUSTOM_KEY  # type: ignore
     if _CUSTOM_KEY:
         ASSISTANT_CUSTOM_API_KEY = _CUSTOM_KEY
 except Exception:
-    pass
+    logging.getLogger(__name__).debug(
+        "Fallo no crítico; se continúa.", exc_info=True)
 
 # --- Detector de Palmas (backend: app/detector/router.py, prefijo /apis/detector_palmas) ---
 DETECTOR_BASE_URL = f"{API_BASE_URL}/apis/detector_palmas"
@@ -142,7 +146,8 @@ try:
     if _G_ID:
         GOOGLE_CLIENT_ID = _G_ID
 except Exception:
-    pass
+    logging.getLogger(__name__).debug(
+        "Fallo no crítico; se continúa.", exc_info=True)
 
 # Endpoints del backend que completan el inicio de sesión con Google.
 GOOGLE_OAUTH_TOKEN_ENDPOINT = f"{API_BASE_URL}/apis/auth/google/token"
@@ -175,7 +180,8 @@ try:
     if _ADMIN_KEY:
         ADMIN_API_KEY = _ADMIN_KEY
 except Exception:
-    pass
+    logging.getLogger(__name__).debug(
+        "Fallo no crítico; se continúa.", exc_info=True)
 # Enlace de compra de paquetes de créditos (25.000 COP = 60 créditos = hasta 300 ha).
 # Placeholder hasta que exista la tienda/pasarela de pago conectada al curso.
 CREDITS_PURCHASE_URL = os.environ.get(

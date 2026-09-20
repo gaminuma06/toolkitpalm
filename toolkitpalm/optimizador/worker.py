@@ -67,7 +67,8 @@ def layer_to_temp_gpkg(layer, prefix):
         try:
             os.remove(path)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
         raise RuntimeError(err_msg or "Error exportando capa a GPKG")
     return path
 
@@ -84,13 +85,15 @@ def output_dir_from_layer(layer):
             if dir_path and os.path.isdir(dir_path):
                 return dir_path
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
     try:
         project_path = QgsProject.instance().fileName()
         if project_path:
             return os.path.dirname(project_path)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
     return os.path.expanduser("~")
 
 
@@ -165,11 +168,13 @@ def run_optimizador_headless(lots_layer_name, roads_layer_name, acopios_layer_na
             try:
                 os.remove(path)
             except Exception:
-                pass
+                logging.getLogger(__name__).debug(
+                    "Fallo no crítico; se continúa.", exc_info=True)
         try:
             os.rmdir(tmp_dir)
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
     if response.status_code == 401:
         raise Exception("X-API-Key inválida o ausente. Verifique la configuración del plugin.")
@@ -195,7 +200,8 @@ def run_optimizador_headless(lots_layer_name, roads_layer_name, acopios_layer_na
     try:
         os.remove(zip_path)
     except Exception:
-        pass
+        logging.getLogger(__name__).debug(
+            "Fallo no crítico; se continúa.", exc_info=True)
 
     opt_points_path = os.path.join(results_dir, "optimal_collection_points.gpkg")
     layer_name = None
@@ -212,7 +218,8 @@ def run_optimizador_headless(lots_layer_name, roads_layer_name, acopios_layer_na
             with open(report_path, "r", encoding="utf-8") as f:
                 report_text = f.read()
         except Exception:
-            pass
+            logging.getLogger(__name__).debug(
+                "Fallo no crítico; se continúa.", exc_info=True)
 
     logger.info(f"Optimización completada. Resultados en: {results_dir}")
 
