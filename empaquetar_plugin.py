@@ -28,7 +28,12 @@ DESTINO = os.path.join(RAIZ, "toolkitpalm.zip")
 
 EXCLUIR_ARCHIVOS = {"config_secrets.py", "client.log", ".write_test"}
 EXCLUIR_EXTENSIONES = {".pyc", ".pyo", ".log"}
-EXCLUIR_CARPETAS = {"__pycache__", ".git", ".idea", "temp", "resultados"}
+EXCLUIR_CARPETAS = {"__pycache__", ".git", ".idea", "temp", "resultados",
+                    # El Asistente abre un puente que ejecuta código Python
+                    # recibido por una conexión local y no pide autenticación.
+                    # Útil en desarrollo, inaceptable en un complemento que se
+                    # instala masivamente. Vuelve cuando el puente exija clave.
+                    "assistant"}
 
 # Los GIFs del instructivo se sirven desde almacenamiento estático, no dentro
 # del paquete (ver recursos_remotos.py). El resto de la carpeta sí se incluye.

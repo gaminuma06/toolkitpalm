@@ -154,6 +154,24 @@ QPushButton {
 """
 
 # key -> (etiqueta de la tarjeta, texto usado por el filtro de búsqueda)
+def _asistente_disponible():
+    """El Asistente no viaja en el paquete que se publica.
+
+    Incluye un puente que ejecuta código Python recibido por una conexión local,
+    que es justo lo que no corresponde exponer en un complemento de distribución
+    masiva: mientras esté activo, cualquier proceso del equipo podría usarlo. Se
+    reincorporará cuando el puente exija autenticación.
+
+    Acá se comprueba si el módulo existe, para que la pestaña aparezca en el
+    entorno de desarrollo (donde sí está) y no en la versión publicada.
+    """
+    try:
+        import importlib.util
+        return importlib.util.find_spec(f"{__package__}.assistant") is not None
+    except Exception:
+        return False
+
+
 _TOOLS = [
     ("detector", "📍 Detector de Palmas"),
     ("segmentador", "🌿 Segmentador de Palmas"),
@@ -162,6 +180,9 @@ _TOOLS = [
     ("optimizador", "🚚 Optimizador de Acopios"),
     ("fotogrametria", "🛩️ Fotogrametría (próximamente)"),
 ]
+
+if not _asistente_disponible():
+    _TOOLS = [(k, e) for k, e in _TOOLS if k != "llm"]
 
 # Herramientas visibles pero deshabilitadas por ahora: quedan al final de la
 # lista, en gris, sin poder abrirse. Se retoman más adelante.
