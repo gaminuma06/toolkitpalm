@@ -1,0 +1,608 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>OptimizadorAcopiosDockWidgetBase</class>
+ <widget class="QDockWidget" name="OptimizadorAcopiosDockWidgetBase">
+  <property name="windowTitle">
+   <string>ToolkitPalm</string>
+  </property>
+  <property name="styleSheet">
+   <string>QDockWidget QWidget { color: #002856; }
+QDockWidget::title {
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: bold;
+  background-color: #002856;
+  padding: 6px 10px;
+  text-align: center;
+}</string>
+  </property>
+  <widget class="QWidget" name="dockWidgetContents">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QScrollArea" name="scrollArea">
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <property name="styleSheet">
+       <string>QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+QScrollBar:vertical {
+    background-color: #f0f0f0;
+    width: 12px;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical {
+    background-color: #c0c0c0;
+    border-radius: 6px;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #a0a0a0;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}</string>
+      </property>
+      <widget class="QWidget" name="scrollAreaWidgetContents">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>280</width>
+         <height>400</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="scrollVerticalLayout">
+        <item>
+         <widget class="QLabel" name="titleLabel">
+          <property name="font">
+           <font>
+            <pointsize>13</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>Optimizador de Acopios</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="styleSheet">
+           <string>color: #002856;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="infoLabel">
+          <property name="font">
+           <font>
+            <pointsize>11</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Optimiza la ubicación de puntos de acopio en plantaciones de palma de aceite para reducir las distancias de recorrido. Requiere lotes y carreteras; acopios actuales opcional (para comparativa).</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="styleSheet">
+           <string>color: #2c3e50;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QGridLayout" name="authLayout">
+          <item row="0" column="0" colspan="2">
+           <widget class="QLabel" name="authTitleLabel">
+            <property name="font">
+             <font>
+              <pointsize>11</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Autenticación</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856; margin-bottom: 5px;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="documentLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Documento</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLineEdit" name="documentLineEdit">
+            <property name="placeholderText">
+             <string>Documento de identidad</string>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::Password</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="credentialLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Contraseña</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="0" colspan="2">
+           <widget class="QLineEdit" name="credentialLineEdit">
+            <property name="placeholderText">
+             <string>Contraseña</string>
+            </property>
+            <property name="echoMode">
+             <enum>QLineEdit::Password</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0" colspan="2">
+           <widget class="QPushButton" name="authenticateButton">
+            <property name="text">
+             <string>Autenticar</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #005587;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background-color: #007AAE;
+}
+QPushButton:disabled {
+    background-color: #9ca3af;
+    color: #6b7280;
+}</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="Line" name="separator1">
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+          <property name="styleSheet">
+           <string>margin: 10px 0px;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QGridLayout" name="layersLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="lotsLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Lotes (polígonos) *</string>
+            </property>
+            <property name="toolTip">
+             <string>Obligatorio. Capa de polígonos con los lotes de la plantación. Sus centroides se usan como puntos de demanda en el modelo p-mediana.</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QgsMapLayerComboBox" name="lotsCombo"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="roadsLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Carreteras (líneas) *</string>
+            </property>
+            <property name="toolTip">
+             <string>Obligatorio. Capa de líneas con la red vial de la plantación. Se generan candidatos a puntos de acopio sobre esta red.</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QgsMapLayerComboBox" name="roadsCombo"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="acopiosLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Acopios actuales (puntos, opcional)</string>
+            </property>
+            <property name="toolTip">
+             <string>Opcional. Si tiene una capa de puntos con los acopios actuales, el sistema calculará las distancias existentes y las comparará con el escenario óptimo, mostrando la mejora obtenida.</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="acopiosCombo"/>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="acopiosDescLabel">
+            <property name="text">
+             <string>Si cuenta con una capa de los acopios actuales, se ejecutará una comparación y se mostrará la mejora en distancias respecto al nuevo escenario óptimo.</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>color: #777777; font-style: italic; font-size: 8pt; margin-top: 1px; margin-bottom: 3px;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QGridLayout" name="paramsLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="pLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Nº de acopios a ubicar *</string>
+            </property>
+            <property name="toolTip">
+             <string>Obligatorio. Número de puntos de acopio a ubicar. El modelo p-mediana buscará exactamente p ubicaciones que minimicen la distancia total desde los lotes.</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QSpinBox" name="pSpinBox">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>999</number>
+            </property>
+            <property name="value">
+             <number>7</number>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="intervalLabel">
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Distancia entre candidatos (m)</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QDoubleSpinBox" name="intervalDoubleSpinBox">
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+            <property name="suffix">
+             <string> m</string>
+            </property>
+            <property name="minimum">
+             <double>10.000000000000000</double>
+            </property>
+            <property name="maximum">
+             <double>500.000000000000000</double>
+            </property>
+            <property name="value">
+             <double>50.000000000000000</double>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QLabel" name="requiredLegendLabel">
+          <property name="text">
+           <string>* Campo obligatorio</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignRight|Qt::AlignVCenter</set>
+          </property>
+          <property name="styleSheet">
+           <string>color: #999999; font-size: 8pt; margin-bottom: 2px;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="columnsHeaderLabel">
+          <property name="text">
+           <string>Columnas opcionales (capa de lotes)</string>
+          </property>
+          <property name="font">
+           <font>
+            <pointsize>10</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="styleSheet">
+           <string>color: #002856; margin-top: 6px; margin-bottom: 2px;</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QGridLayout" name="columnsLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="productividadLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Productividad (RFF/t)</string>
+            </property>
+            <property name="toolTip">
+             <string>Opcional. Columna de la capa de lotes con la productividad en toneladas de RFF por hectárea. Permite subdividir los lotes en unidades de demanda más reales.</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QComboBox" name="productividadCombo">
+            <property name="toolTip">
+             <string>Opcional. Columna con la productividad en t RFF/ha. Seleccione "Sin producción" si no aplica.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QLabel" name="productividadDescLabel">
+            <property name="text">
+             <string>Permite subdividir los lotes en unidades de demanda más reales. Si no aplica, deje "Sin producción".</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>color: #777777; font-style: italic; font-size: 8pt; margin-top: 1px; margin-bottom: 3px;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="preciosLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+             </font>
+            </property>
+            <property name="text">
+             <string>Tarifa (COP/t)</string>
+            </property>
+            <property name="toolTip">
+             <string>Opcional. Columna con la tarifa de cosecha en COP por tonelada de RFF. Tarifa de cosecha diferenciada por productividad del lote.</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="preciosCombo">
+            <property name="toolTip">
+             <string>Opcional. Columna con la tarifa de cosecha en COP/t. Seleccione "Sin tarifa" si no aplica.</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0" colspan="2">
+           <widget class="QLabel" name="preciosDescLabel">
+            <property name="text">
+             <string>Tarifa de cosecha diferenciada por productividad del lote. Si no aplica, deje "Sin tarifa".</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>color: #777777; font-style: italic; font-size: 8pt; margin-top: 1px; margin-bottom: 3px;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QPushButton" name="optimizeButton">
+          <property name="text">
+           <string>Ejecutar optimización</string>
+          </property>
+          <property name="styleSheet">
+           <string>QPushButton {
+    background-color: #005587;
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background-color: #007AAE;
+}
+QPushButton:disabled {
+    background-color: #9ca3af;
+    color: #6b7280;
+}</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="resultsSummaryGroup">
+          <property name="title">
+           <string>Resumen del último resultado</string>
+          </property>
+          <property name="styleSheet">
+           <string>QGroupBox { font-weight: bold; color: #002856; }
+QGroupBox::title { subcontrol-origin: margin; left: 8px; padding: 0 4px; }</string>
+          </property>
+          <layout class="QVBoxLayout" name="resultsSummaryLayout">
+           <item>
+            <widget class="QTextEdit" name="resultsSummaryText">
+             <property name="readOnly">
+              <bool>true</bool>
+             </property>
+             <property name="maximumHeight">
+              <number>160</number>
+             </property>
+             <property name="styleSheet">
+              <string>QTextEdit {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 8px;
+    font-family: Consolas, monospace;
+    font-size: 11px;
+    color: #333;
+}
+QTextEdit QScrollBar:vertical {
+    width: 12px;
+    border-radius: 6px;
+    background: #e9ecef;
+}
+QTextEdit QScrollBar::handle:vertical {
+    min-height: 24px;
+    border-radius: 6px;
+    background: #adb5bd;
+}
+QTextEdit QScrollBar::handle:vertical:hover {
+    background: #6c757d;
+}
+QTextEdit QScrollBar::add-line:vertical, QTextEdit QScrollBar::sub-line:vertical {
+    height: 0;
+}</string>
+             </property>
+             <property name="placeholderText">
+              <string>Ejecute la optimización para ver el resumen aquí.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="resetButton">
+             <property name="text">
+              <string>Reiniciar</string>
+             </property>
+             <property name="toolTip">
+              <string>Borra el resumen de resultados y restablece las columnas opcionales según la capa de lotes activa.</string>
+             </property>
+             <property name="styleSheet">
+              <string>QPushButton {
+    background-color: transparent;
+    color: #005587;
+    border: 1px solid #005587;
+    padding: 5px;
+    border-radius: 4px;
+    font-size: 11px;
+}
+QPushButton:hover {
+    background-color: #e8f0f7;
+}
+QPushButton:disabled {
+    color: #9ca3af;
+    border-color: #9ca3af;
+}</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QgsMapLayerComboBox</class>
+   <extends>QComboBox</extends>
+   <header>qgis.gui</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

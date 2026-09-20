@@ -1,0 +1,33 @@
+# NUNCA subir: credenciales reales (client_secret de Google, claves de API,
+# clave de administración). La plantilla vacía config_secrets.example.py sí va.
+toolkitpalm/config_secrets.py
+
+# Registros y cachés
+*.log
+*.pyc
+*.pyo
+__pycache__/
+.write_test
+
+# El paquete se genera con empaquetar_plugin.py, no se versiona
+toolkitpalm.zip
+
+# Script de operación propio: carga los secretos en el servidor y nombra el
+# proyecto y el servicio en la nube. No le sirve a quien instala el plugin.
+configurar_servidor.py
+
+# Ilustraciones del instructivo: pesan ~56 MB y se sirven desde almacenamiento
+# estático (ver toolkitpalm/recursos_remotos.py), no desde el repositorio.
+toolkitpalm/detector/instructivo/*.gif
+
+# Resultados y temporales de pruebas
+temp/
+resultados/
+temp_job_*/
+temp_seg_*/
+
+# Sistema
+Thumbs.db
+.DS_Store
+.idea/
+.vscode/

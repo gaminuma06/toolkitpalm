@@ -1,0 +1,46 @@
+# Metadatos del complemento. El repositorio oficial de QGIS valida estos campos
+# y rechaza los que traigan enlaces de relleno o que no respondan.
+
+[general]
+name=ToolkitPalm
+qgisMinimumVersion=3.16
+description=Detección, segmentación y optimización de acopios de palma de aceite sobre ortoimágenes de dron.
+version=1.0.0
+author=Ing. Adán Arias
+email=ingarias9006@gmail.com
+
+about=ToolkitPalm reúne en un solo panel tres herramientas de geoprocesamiento para plantaciones de palma de aceite, pensadas para trabajar sobre ortomosaicos de dron:
+    - Detector de Palmas: cuenta e identifica cada palma, con edición manual de los puntos detectados y numeración automática.
+    - Segmentador de Palmas: aísla el dosel foliar y calcula índices espectrales (NDVI, NDWI, SAVI y otros).
+    - Optimizador de Acopios: ubica los puntos de acopio óptimos sobre la red de vías.
+    .
+    El procesamiento pesado corre en un servidor propio, así que no hace falta GPU ni instalar librerías de aprendizaje profundo en el equipo. El uso requiere iniciar sesión con una cuenta de Google y consumir créditos de procesamiento; cada cuenta nueva recibe un crédito de prueba gratuito.
+    .
+    Dependencias: requests (incluido en la instalación estándar de QGIS). No requiere paquetes adicionales.
+
+tracker=https://github.com/gaminuma06/toolkitpalm/issues
+repository=https://github.com/gaminuma06/toolkitpalm
+homepage=https://github.com/gaminuma06/toolkitpalm
+
+# Recommended items:
+hasProcessingProvider=no
+
+changelog=1.0.0 - Primera versión pública.
+    - Tres herramientas unificadas en un solo panel con buscador.
+    - Inicio de sesión con cuenta de Google (OAuth 2.0 con PKCE); el plugin no
+      guarda contraseñas ni secretos.
+    - Créditos de procesamiento: 1 crédito por cada 5 ha, con cobro por lote
+      completo y no por bloque.
+    - Lotes de cualquier tamaño: se dividen en bloques que se procesan en
+      paralelo, con opción de reanudar donde quedó si se agotan los créditos.
+    - Compra de créditos en línea (PSE, tarjeta, Nequi, Bancolombia).
+
+tags=raster, deep learning, remote sensing, precision agriculture, oil palm, drone, uav, vegetation index, python
+
+category=Raster
+icon=icon.png
+experimental=False
+deprecated=False
+
+# El complemento se distribuye bajo GPL v2 o posterior (ver LICENSE).
+license=GPL-2.0-or-later

@@ -1,0 +1,27 @@
+{
+  "manifest_version": "0.4",
+  "name": "toolkitpalm",
+  "display_name": "ToolkitPalm (QGIS)",
+  "version": "1.0.0",
+  "description": "Conecta Claude con QGIS (plugin ToolkitPalm, de Ingeniero Adán Arias): ver y modificar capas, ejecutar geoprocesos, y usar el Detector, Segmentador y Optimizador de Acopios.",
+  "long_description": "Este puente permite que Claude Desktop hable directamente con QGIS a través del plugin ToolkitPalm. Antes de usarlo, activa la conexión externa en la pestaña Asistente del plugin (dentro de QGIS).",
+  "author": {
+    "name": "Ingeniero Adán Arias"
+  },
+  "server": {
+    "type": "uv",
+    "entry_point": "src/toolkitpalm_bridge.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "src/toolkitpalm_bridge.py"]
+    }
+  },
+  "compatibility": {
+    "platforms": ["win32", "darwin", "linux"],
+    "runtimes": {
+      "python": ">=3.10"
+    }
+  },
+  "keywords": ["qgis", "gis", "toolkitpalm"],
+  "license": "MIT"
+}

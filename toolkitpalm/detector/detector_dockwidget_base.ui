@@ -1,0 +1,961 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DetectorPalmasDockWidgetBase</class>
+ <widget class="QDockWidget" name="DetectorPalmasDockWidgetBase">
+  <property name="windowModality">
+   <enum>Qt::ApplicationModal</enum>
+  </property>
+  <property name="enabled">
+   <bool>true</bool>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>300</width>
+    <height>280</height>
+   </rect>
+  </property>
+  <property name="acceptDrops">
+   <bool>true</bool>
+  </property>
+  <property name="layoutDirection">
+   <enum>Qt::LeftToRight</enum>
+  </property>
+  <property name="floating">
+   <bool>false</bool>
+  </property>
+  <property name="windowTitle">
+   <string>ToolkitPalm</string>
+  </property>
+  <property name="styleSheet">
+   <string>QDockWidget QWidget { color: #1e3a8a; font-weight: bold; }
+QDockWidget::title { color: #1e3a8a; font-weight: bold; font-size: 13px; }</string>
+  </property>
+  <widget class="QWidget" name="dockWidgetContents">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QScrollArea" name="scrollArea">
+      <property name="acceptDrops">
+       <bool>true</bool>
+      </property>
+      <property name="widgetResizable">
+       <bool>true</bool>
+      </property>
+      <property name="styleSheet">
+       <string>QScrollArea {
+    border: none;
+    background-color: transparent;
+}
+QScrollBar:vertical {
+    background-color: #f0f0f0;
+    width: 12px;
+    border-radius: 6px;
+}
+QScrollBar::handle:vertical {
+    background-color: #c0c0c0;
+    border-radius: 6px;
+    min-height: 20px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #a0a0a0;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}</string>
+      </property>
+      <widget class="QWidget" name="scrollAreaWidgetContents">
+       <property name="acceptDrops">
+        <bool>true</bool>
+       </property>
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>0</y>
+         <width>280</width>
+         <height>350</height>
+        </rect>
+       </property>
+       <layout class="QVBoxLayout" name="scrollVerticalLayout">
+        <property name="spacing">
+         <number>6</number>
+        </property>
+        <property name="leftMargin">
+         <number>6</number>
+        </property>
+        <property name="topMargin">
+         <number>6</number>
+        </property>
+        <property name="rightMargin">
+         <number>6</number>
+        </property>
+        <property name="bottomMargin">
+         <number>6</number>
+        </property>
+
+        <!-- Título del plugin -->
+        <item>
+         <widget class="QLabel" name="titleLabel">
+          <property name="font">
+           <font>
+            <pointsize>13</pointsize>
+            <weight>75</weight>
+            <bold>true</bold>
+           </font>
+          </property>
+          <property name="text">
+           <string>DetectorPalmas</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="styleSheet">
+           <string>color: #002856;</string>
+          </property>
+         </widget>
+        </item>
+
+        <!-- Texto informativo -->
+        <item>
+         <widget class="QLabel" name="infoLabel">
+          <property name="font">
+           <font>
+            <pointsize>9</pointsize>
+           </font>
+          </property>
+          <property name="text">
+           <string>Plugin de QGIS que utiliza técnicas de aprendizaje profundo para detectar palmas en ortoimágenes aéreas.
+
+Para lotes mayores a 50 ha el proceso puede tardar varios minutos. Requiere buena conexión a internet.</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignLeft|Qt::AlignTop</set>
+          </property>
+          <property name="wordWrap">
+           <bool>true</bool>
+          </property>
+          <property name="styleSheet">
+           <string>color: #666666;</string>
+          </property>
+         </widget>
+        </item>
+
+        <!-- Sección de autenticación (QFrame propio, se oculta tras login) -->
+        <item>
+         <widget class="QFrame" name="authFormFrame">
+          <property name="frameShape">
+           <enum>QFrame::NoFrame</enum>
+          </property>
+          <property name="frameShadow">
+           <enum>QFrame::Plain</enum>
+          </property>
+          <layout class="QVBoxLayout" name="authFormLayout">
+           <property name="spacing">
+            <number>4</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+
+           <item>
+            <widget class="QLabel" name="authTitleLabel">
+             <property name="font">
+              <font>
+               <pointsize>11</pointsize>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Autenticación</string>
+             </property>
+             <property name="alignment">
+              <set>Qt::AlignCenter</set>
+             </property>
+             <property name="styleSheet">
+              <string>color: #002856; margin-bottom: 5px;</string>
+             </property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QLabel" name="documentLabel">
+             <property name="font">
+              <font>
+               <pointsize>10</pointsize>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Documento de Identidad</string>
+             </property>
+             <property name="styleSheet">
+              <string>color: #002856;</string>
+             </property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QLineEdit" name="documentLineEdit">
+             <property name="placeholderText">
+              <string>Ingrese su documento de identidad</string>
+             </property>
+             <property name="echoMode">
+              <enum>QLineEdit::Password</enum>
+             </property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QLabel" name="credentialLabel">
+             <property name="font">
+              <font>
+               <pointsize>10</pointsize>
+               <weight>75</weight>
+               <bold>true</bold>
+              </font>
+             </property>
+             <property name="text">
+              <string>Contraseña</string>
+             </property>
+             <property name="styleSheet">
+              <string>color: #002856;</string>
+             </property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QLineEdit" name="credentialLineEdit">
+             <property name="placeholderText">
+              <string>Ingrese su contraseña</string>
+             </property>
+             <property name="echoMode">
+              <enum>QLineEdit::Password</enum>
+             </property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="QPushButton" name="authenticateButton">
+             <property name="text">
+              <string>Autenticar</string>
+             </property>
+             <property name="styleSheet">
+              <string>QPushButton {
+    background-color: #002856;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background-color: #005587;
+}
+QPushButton:disabled {
+    background-color: #9ca3af;
+    color: #6b7280;
+}</string>
+             </property>
+            </widget>
+           </item>
+
+           <item>
+            <widget class="Line" name="authSeparator">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="styleSheet">
+              <string>margin: 6px 0px;</string>
+             </property>
+            </widget>
+           </item>
+
+          </layout>
+         </widget>
+        </item>
+
+        <!-- Grid de detección (filas renumeradas desde 0, sin auth) -->
+        <item>
+         <layout class="QGridLayout" name="gridLayout">
+
+          <item row="0" column="0">
+           <widget class="QLabel" name="label">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Ortoimagen</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="0">
+           <widget class="QLineEdit" name="lineEdit">
+            <property name="acceptDrops">
+             <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+             <string>Arrastre la ortoimagen aquí o use el botón</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="1" column="1">
+           <widget class="QPushButton" name="pushButton">
+            <property name="text">
+             <string>Seleccionar</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_2">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Lotes</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="3" column="0">
+           <widget class="QLineEdit" name="lineEdit_2">
+            <property name="acceptDrops">
+             <bool>true</bool>
+            </property>
+            <property name="placeholderText">
+             <string>Arrastre el shapefile de lotes aquí o use el botón</string>
+            </property>
+           </widget>
+          </item>
+
+          <item row="3" column="1">
+           <widget class="QPushButton" name="pushButton_2">
+            <property name="text">
+             <string>Seleccionar</string>
+            </property>
+           </widget>
+          </item>
+
+          <!-- buttonBox: Python lo mueve a row 5 y agrega selectLotButton en row 4 -->
+          <item row="5" column="0" colspan="2">
+           <widget class="QDialogButtonBox" name="buttonBox">
+            <property name="standardButtons">
+             <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+            </property>
+           </widget>
+          </item>
+
+          <!-- Sección Numeración de Palmas (todo oculto inicialmente) -->
+          <item row="6" column="0" colspan="2">
+           <widget class="Line" name="palmNumberingSeparator">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+            <property name="styleSheet">
+             <string>margin: 10px 0px;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="7" column="0" colspan="2">
+           <widget class="QLabel" name="palmNumberingTitleLabel">
+            <property name="font">
+             <font>
+              <pointsize>11</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Numeración de Palmas</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856; margin-bottom: 5px;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="8" column="0">
+           <widget class="QLabel" name="fidLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>FID</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="8" column="1">
+           <widget class="QLineEdit" name="fidLineEdit">
+            <property name="placeholderText">
+             <string>FID del punto</string>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #f0f0f0; color: #666666;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="9" column="0">
+           <widget class="QLabel" name="xLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>X</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="9" column="1">
+           <widget class="QLineEdit" name="xLineEdit">
+            <property name="placeholderText">
+             <string>Coordenada X</string>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #f0f0f0; color: #666666;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="10" column="0">
+           <widget class="QLabel" name="yLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Y</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="10" column="1">
+           <widget class="QLineEdit" name="yLineEdit">
+            <property name="placeholderText">
+             <string>Coordenada Y</string>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #f0f0f0; color: #666666;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="11" column="0" colspan="2">
+           <widget class="QLabel" name="instructionLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Seleccione la "línea 1 palma 1"</string>
+            </property>
+            <property name="alignment">
+             <set>Qt::AlignCenter</set>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856; margin: 5px 0px;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="12" column="0" colspan="2">
+           <widget class="QPushButton" name="selectFirstPointButton">
+            <property name="text">
+             <string>Hacer clic en la palma</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #059669;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 11px;
+}
+QPushButton:hover {
+    background-color: #047857;
+}
+QPushButton:disabled {
+    background-color: #9ca3af;
+    color: #6b7280;
+}</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="13" column="0">
+           <widget class="QLabel" name="lotNumberLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Lote a numerar:</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="13" column="1">
+           <widget class="QLineEdit" name="lotNumberLineEdit">
+            <property name="placeholderText">
+             <string>FID del lote</string>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #f0f0f0; color: #666666;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="14" column="0">
+           <widget class="QLabel" name="palm1XLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Palma 1 X:</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="14" column="1">
+           <widget class="QLineEdit" name="palm1XLineEdit">
+            <property name="placeholderText">
+             <string>Coordenada X</string>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #f0f0f0; color: #666666;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="15" column="0">
+           <widget class="QLabel" name="palm1YLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Palma 1 Y:</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="15" column="1">
+           <widget class="QLineEdit" name="palm1YLineEdit">
+            <property name="placeholderText">
+             <string>Coordenada Y</string>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #f0f0f0; color: #666666;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="16" column="0">
+           <widget class="QLabel" name="distanceLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Distancia entre palmas:</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="16" column="1">
+           <widget class="QLineEdit" name="distanceLineEdit">
+            <property name="placeholderText">
+             <string>Distancia en metros</string>
+            </property>
+            <property name="readOnly">
+             <bool>true</bool>
+            </property>
+            <property name="styleSheet">
+             <string>background-color: #f0f0f0; color: #666666;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="17" column="0">
+           <widget class="QLabel" name="azimuthLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Azimut:</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="17" column="1">
+           <widget class="QLineEdit" name="azimuthLineEdit">
+            <property name="placeholderText">
+             <string>Ángulo en grados</string>
+            </property>
+            <property name="styleSheet">
+             <string>QLineEdit {
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 4px;
+    background-color: white;
+}</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="18" column="0">
+           <widget class="QLabel" name="directionLabel">
+            <property name="font">
+             <font>
+              <pointsize>10</pointsize>
+              <weight>75</weight>
+              <bold>true</bold>
+             </font>
+            </property>
+            <property name="text">
+             <string>Dirección de líneas:</string>
+            </property>
+            <property name="styleSheet">
+             <string>color: #002856;</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="18" column="1">
+           <widget class="QWidget" name="directionWidget">
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+            <layout class="QHBoxLayout" name="directionLayout">
+             <item>
+              <widget class="QRadioButton" name="directionRightRadio">
+               <property name="text">
+                <string>Derecha</string>
+               </property>
+               <property name="checked">
+                <bool>true</bool>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QRadioButton" name="directionLeftRadio">
+               <property name="text">
+                <string>Izquierda</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+
+          <item row="19" column="0" colspan="2">
+           <widget class="QPushButton" name="generateLayerButton">
+            <property name="text">
+             <string>Generar Capa</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #dc2626;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background-color: #b91c1c;
+}
+QPushButton:disabled {
+    background-color: #9ca3af;
+    color: #6b7280;
+}</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="20" column="0" colspan="2">
+           <widget class="QLabel" name="instructionLabel2">
+            <property name="text">
+             <string>Selecciona la palma 1 de la línea 1 para activar la numeración de palmas</string>
+            </property>
+            <property name="styleSheet">
+             <string>QLabel {
+    color: #6b7280;
+    font-size: 10px;
+    font-style: italic;
+    padding: 4px;
+}</string>
+            </property>
+            <property name="wordWrap">
+             <bool>true</bool>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="21" column="0" colspan="2">
+           <widget class="QPushButton" name="editPalmsButton">
+            <property name="text">
+             <string>Editar Palmas</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #005587;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background-color: #004470;
+}
+QPushButton:disabled {
+    background-color: #9ca3af;
+    color: #6b7280;
+}</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+          <item row="22" column="0" colspan="2">
+           <widget class="QPushButton" name="activatePalmNumberingButton">
+            <property name="text">
+             <string>Activar Numeración de Palmas</string>
+            </property>
+            <property name="styleSheet">
+             <string>QPushButton {
+    background-color: #007AAE;
+    color: white;
+    border: none;
+    padding: 8px;
+    border-radius: 4px;
+    font-weight: bold;
+    font-size: 12px;
+}
+QPushButton:hover {
+    background-color: #005587;
+}
+QPushButton:disabled {
+    background-color: #9ca3af;
+    color: #6b7280;
+}</string>
+            </property>
+            <property name="visible">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+
+         </layout>
+        </item>
+
+        <!-- Spacer vertical para anclar contenido arriba -->
+        <item>
+         <spacer name="verticalSpacer">
+          <property name="orientation">
+           <enum>Qt::Vertical</enum>
+          </property>
+          <property name="sizeHint" stdset="0">
+           <size>
+            <width>20</width>
+            <height>40</height>
+           </size>
+          </property>
+         </spacer>
+        </item>
+
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

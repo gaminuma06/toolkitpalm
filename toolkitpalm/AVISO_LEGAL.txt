@@ -1,0 +1,51 @@
+ToolkitPalm
+Copyright (C) 2026 Ing. Adán Arias
+
+Este programa es software libre: puede redistribuirlo y/o modificarlo bajo los
+términos de la Licencia Pública General de GNU, versión 2 o posterior, publicada
+por la Free Software Foundation. El texto completo está en el archivo LICENSE.
+
+Se distribuye con la esperanza de que sea útil, pero SIN NINGUNA GARANTÍA; ni
+siquiera la garantía implícita de COMERCIABILIDAD o APTITUD PARA UN PROPÓSITO
+DETERMINADO.
+
+
+QUÉ CUBRE Y QUÉ NO CUBRE ESTA LICENCIA
+--------------------------------------
+
+La licencia GPL se aplica al código de este complemento, que es el que se
+publica en el repositorio de QGIS.
+
+No se aplica a los servicios que el complemento consulta: los modelos de
+detección y segmentación, el código del servidor y los datos de procesamiento
+son propiedad del autor, se ejecutan en infraestructura propia y no forman parte
+de esta distribución. El acceso a esos servicios requiere una cuenta y créditos
+de procesamiento.
+
+El nombre "ToolkitPalm" y la identidad visual asociada son del autor. Cualquiera
+puede usar, modificar y redistribuir el código conforme a la GPL; distribuir una
+versión modificada bajo el mismo nombre, de forma que pueda confundirse con la
+original, no está autorizado.
+
+
+DATOS PERSONALES
+----------------
+
+Al iniciar sesión, el complemento recibe de Google el identificador de la
+cuenta, el correo y el nombre, y los envía al servidor del autor con el único
+fin de asociar los créditos de procesamiento a esa cuenta. No se recogen ni se
+transmiten otros datos personales, y no se comparten con terceros.
+
+Las ortoimágenes y los archivos que se envían a procesar se usan únicamente para
+generar el resultado solicitado y se eliminan del servidor una vez entregado.
+
+
+DESARROLLO INDEPENDIENTE
+------------------------
+
+ToolkitPalm es un desarrollo propio e independiente de su autor, Ing. Adán
+Arias, quien es el único responsable del complemento y de los servicios que lo
+respaldan.
+
+
+Contacto y soporte: https://toolkitpalm.adanarias.com

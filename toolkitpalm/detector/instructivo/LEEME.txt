@@ -1,0 +1,22 @@
+Imágenes del instructivo
+========================
+
+Cada paso del instructivo busca acá su ilustración. Son opcionales: si el
+archivo no existe, el paso muestra un recuadro indicando cuál falta y el
+instructivo funciona igual.
+
+Nombres que busca (en este orden de preferencia: .gif, .png, .jpg, .jpeg):
+
+    paso1_ortofoto     Calidad de la ortofoto (ejemplo bueno vs. malo)
+    paso2_cargar       Panel del Detector con los campos llenos
+    paso3_lote         Seleccionar el lote en el mapa
+    paso4_detectar     Resultado de la detección
+    paso5_editar       Editar Palmas: borrar, agregar y mover puntos
+    paso6_numerar      Los cuatro clics de línea 1 y línea 2
+    paso7_revisar      Resultado final con líneas paralelas
+
+Los .gif se reproducen en bucle, así que son ideales para mostrar el gesto
+completo (por ejemplo, arrastrar un punto hasta el cogollo en el paso 5).
+
+Tamaño recomendado: alrededor de 900 x 450 px. El alto se limita a 240 px en
+pantalla, manteniendo la proporción.
