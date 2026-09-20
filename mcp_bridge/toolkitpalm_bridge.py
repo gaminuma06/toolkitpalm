@@ -108,6 +108,11 @@ def _send_to_qgis_sync(command, timeout=_CALL_TIMEOUT):
 
     try:
         sock.settimeout(timeout)
+        # La clave de acceso va en cada orden: QGIS rechaza las que no la traen.
+        # Se lee del entorno para no dejarla escrita en ningún archivo.
+        token = os.environ.get("QGIS_MCP_TOKEN", "").strip()
+        if token:
+            command = dict(command, token=token)
         body = json.dumps(command, ensure_ascii=False).encode("utf-8")
         sock.sendall(_HEADER_STRUCT.pack(len(body)) + body)
 

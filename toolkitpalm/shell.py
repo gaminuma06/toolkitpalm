@@ -1311,6 +1311,43 @@ class ToolkitPalmDockWidget(QDockWidget):
         self._mcp_status_label.setStyleSheet(f"color: {AZUL_MEDIO}; font-size: 11px;")
         box_layout.addWidget(self._mcp_status_label)
 
+        # Clave de acceso. La conexión puede ejecutar código dentro de QGIS, así
+        # que sin esta clave no atiende a nadie: es lo que impide que cualquier
+        # otro programa del equipo se conecte mientras está activa.
+        clave_row = QHBoxLayout()
+        clave_row.addWidget(QLabel("Clave de acceso:"))
+        self._mcp_token_field = QLineEdit()
+        self._mcp_token_field.setReadOnly(True)
+        self._mcp_token_field.setEchoMode(QLineEdit.Password)
+        self._mcp_token_field.setToolTip(
+            "Pégala en la configuración de tu cliente MCP. No la compartas: "
+            "quien la tenga puede operar tu QGIS mientras la conexión esté activa."
+        )
+        clave_row.addWidget(self._mcp_token_field, 1)
+
+        ver_button = QPushButton("👁")
+        ver_button.setFixedWidth(30)
+        ver_button.setCheckable(True)
+        ver_button.setToolTip("Mostrar u ocultar la clave")
+        ver_button.toggled.connect(
+            lambda visible: self._mcp_token_field.setEchoMode(
+                QLineEdit.Normal if visible else QLineEdit.Password))
+        clave_row.addWidget(ver_button)
+
+        copiar_button = QPushButton("Copiar")
+        copiar_button.clicked.connect(self._on_copiar_token_mcp)
+        clave_row.addWidget(copiar_button)
+
+        regenerar_button = QPushButton("Cambiar")
+        regenerar_button.setToolTip(
+            "Genera una clave nueva. Los clientes configurados con la anterior "
+            "dejarán de conectarse hasta que los actualices.")
+        regenerar_button.clicked.connect(self._on_regenerar_token_mcp)
+        clave_row.addWidget(regenerar_button)
+        box_layout.addLayout(clave_row)
+
+        self._refrescar_token_mcp()
+
         instructions_button = QPushButton("📋 Generar instrucciones de configuración")
         instructions_button.clicked.connect(self._on_show_mcp_instructions)
         box_layout.addWidget(instructions_button)
@@ -1445,6 +1482,41 @@ class ToolkitPalmDockWidget(QDockWidget):
     # ------------------------------------------------------------------
     # Asistente: conexión externa (MCP para Claude Desktop / Claude Code)
     # ------------------------------------------------------------------
+
+    def _refrescar_token_mcp(self):
+        """Muestra en el campo la clave vigente de esta instalación."""
+        campo = getattr(self, "_mcp_token_field", None)
+        if campo is None:
+            return
+        try:
+            from .assistant.qgis_actions import token_de_esta_instalacion
+            campo.setText(token_de_esta_instalacion())
+        except Exception as e:
+            campo.setText("")
+            campo.setPlaceholderText(f"No se pudo leer la clave: {e}")
+
+    def _on_copiar_token_mcp(self):
+        from .assistant.qgis_actions import token_de_esta_instalacion
+
+        QApplication.clipboard().setText(token_de_esta_instalacion())
+        self._mcp_status_label.setText(
+            "Clave copiada al portapapeles. Pégala en tu cliente MCP.")
+
+    def _on_regenerar_token_mcp(self):
+        from .assistant.qgis_actions import token_de_esta_instalacion
+
+        respuesta = QMessageBox.question(
+            self, "Cambiar la clave de acceso",
+            "Se generará una clave nueva.\n\n"
+            "Los clientes que ya tengas configurados con la clave anterior "
+            "dejarán de conectarse hasta que los actualices.\n\n¿Continuar?",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+        if respuesta != QMessageBox.Yes:
+            return
+        token_de_esta_instalacion(regenerar=True)
+        self._refrescar_token_mcp()
+        self._mcp_status_label.setText(
+            "Clave cambiada. Actualízala en tus clientes MCP.")
 
     def _on_toggle_mcp_server(self, checked):
         if checked:
@@ -1594,13 +1666,22 @@ class ToolkitPalmDockWidget(QDockWidget):
             "y vuelve a generar estas instrucciones>"
         )
 
+        # La clave de acceso viaja como variable de entorno del puente: así no
+        # queda escrita en el archivo de configuración de Claude.
+        from .assistant.qgis_actions import token_de_esta_instalacion
+        token = token_de_esta_instalacion()
+
         pip_cmd = f'pip install -r "{requirements_file}"'
-        claude_code_cmd = f'claude mcp add toolkitpalm -- "{python_hint}" "{bridge_script}" --port {port}'
+        claude_code_cmd = (
+            f'claude mcp add toolkitpalm --env QGIS_MCP_TOKEN={token} '
+            f'-- "{python_hint}" "{bridge_script}" --port {port}'
+        )
 
         self._mcp_copyable_texts = {
             "mcpb_path": mcpb_file,
             "pip": pip_cmd,
             "code": claude_code_cmd,
+            "token": token,
         }
         self._mcp_copy_feedback.setVisible(False)
 
@@ -1623,6 +1704,15 @@ class ToolkitPalmDockWidget(QDockWidget):
         Justo arriba de este texto, presiona el botón <b>"Activar conexión"</b>. Debe quedar
         encendido cada vez que quieras hablarle a QGIS desde Claude (si cierras QGIS, al
         volver a abrirlo tendrás que presionarlo otra vez).</p>
+
+        <p style="background-color:#fff8e1; border-left:3px solid #f59e0b; padding:9px 12px;">
+        <b>Sobre la clave de acceso.</b> Mientras la conexión está encendida, QGIS solo
+        atiende a quien presente tu clave, y solo desde este mismo equipo. Eso es lo que
+        impide que otro programa instalado en tu computador use la conexión sin permiso.
+        La clave ya va incluida en el comando del Paso 2, así que no tienes que hacer nada
+        con ella — solo <b>no la compartas ni la publiques</b>. Si alguna vez crees que se
+        filtró, presiona <b>"Cambiar"</b> junto a la clave y vuelve a generar estas
+        instrucciones.</p>
 
         <p><b>Paso 2 — Conecta tu Claude</b><br>
         Sigue solo la parte que uses (puedes hacer las dos si usas ambas apps). Son procesos

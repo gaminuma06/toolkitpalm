@@ -219,8 +219,35 @@ from .compat import (
     WKB_NO_GEOMETRY,
 )
 
-_DEFAULT_HOST = "localhost"
+# Se escucha explícitamente en la dirección de bucle local: nunca en una
+# interfaz de red, para que la conexión no quede expuesta fuera del equipo.
+_DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 9876
+
+_CLAVE_TOKEN = "toolkitpalm/assistant/mcp_token"
+
+
+def token_de_esta_instalacion(regenerar: bool = False) -> str:
+    """Token que hay que presentar para usar la conexión MCP.
+
+    Se genera solo la primera vez y queda guardado en la configuración de QGIS
+    de este equipo. El usuario lo copia en su cliente MCP; nadie más lo conoce.
+
+    Se admite QGIS_MCP_TOKEN en el entorno para quien quiera fijarlo por su
+    cuenta (por ejemplo, para automatizar varias instalaciones).
+    """
+    del_entorno = os.environ.get("QGIS_MCP_TOKEN", "").strip()
+    if del_entorno and not regenerar:
+        return del_entorno
+
+    from qgis.PyQt.QtCore import QSettings
+
+    ajustes = QSettings()
+    token = "" if regenerar else str(ajustes.value(_CLAVE_TOKEN, "", type=str) or "")
+    if not token:
+        token = secrets.token_urlsafe(24)
+        ajustes.setValue(_CLAVE_TOKEN, token)
+    return token
 # "someone else already holds this port". EADDRINUSE is the usual answer, and is
 # what a second QGIS window gets since both sides set SO_EXCLUSIVEADDRUSE. Windows
 # answers WSAEACCES instead when the other holder used plain SO_REUSEADDR, which
@@ -437,32 +464,46 @@ class QgisMCPServer(QObject):
             QgsMessageLog.logMessage(f"Server error: {e!s}", self.LOG_TAG, MSG_CRITICAL)
 
     def execute_command(self, command):
-        """Execute a command.
+        """Execute a command, but only if it brings the right token.
 
-        Optional shared-secret auth gate: when QGIS_MCP_TOKEN is set in the
-        plugin's environment, every command must carry a matching token or it
-        is rejected before any handler runs. When unset, behaviour is unchanged
-        (open) for backward compatibility. Dispatch itself lives in _dispatch
-        so internal callers (e.g. batch) reuse it without re-authenticating.
+        Este servidor puede ejecutar código Python dentro de QGIS, así que la
+        autenticación no es opcional: sin token válido no se despacha nada. El
+        token se genera solo la primera vez y el usuario lo copia en su cliente
+        MCP (ver token_de_esta_instalacion).
+
+        Antes esto era abierto cuando no había token configurado. Eso significaba
+        que, con la conexión activada, cualquier proceso del equipo —o una página
+        web haciendo peticiones a localhost— podía ejecutar código. Ya no.
+
+        El despacho vive en _dispatch para que quien ya está autenticado (por
+        ejemplo, los pasos de un batch) no tenga que volver a autenticarse.
         """
-        # This runs on untrusted socket input before auth — never trust shape.
+        # Esto corre sobre datos que llegan del socket, antes de autenticar:
+        # nunca se asume la forma del mensaje.
         if not isinstance(command, dict):
             return {"status": "error", "message": "Invalid command: expected an object"}
 
-        expected_token = os.environ.get("QGIS_MCP_TOKEN", "").strip()
-        if expected_token:
-            provided_token = str(command.get("token") or "")
-            # Compare as bytes: secrets.compare_digest rejects non-ASCII str.
-            if not secrets.compare_digest(
-                provided_token.encode("utf-8"), expected_token.encode("utf-8")
-            ):
-                QgsMessageLog.logMessage(
-                    "Rejected command with missing/invalid token", self.LOG_TAG, MSG_WARNING
-                )
-                return {
-                    "status": "error",
-                    "message": "Authentication failed: missing or invalid token",
-                }
+        expected_token = token_de_esta_instalacion()
+        if not expected_token:
+            QgsMessageLog.logMessage(
+                "No hay token disponible: se rechaza la orden", self.LOG_TAG, MSG_WARNING
+            )
+            return {"status": "error", "message": "Authentication is not configured"}
+
+        provided_token = str(command.get("token") or "")
+        # Se comparan bytes: secrets.compare_digest rechaza str no ASCII. Y se
+        # usa compare_digest y no '==' para no filtrar el token por el tiempo
+        # que tarda la comparación.
+        if not secrets.compare_digest(
+            provided_token.encode("utf-8"), expected_token.encode("utf-8")
+        ):
+            QgsMessageLog.logMessage(
+                "Rejected command with missing/invalid token", self.LOG_TAG, MSG_WARNING
+            )
+            return {
+                "status": "error",
+                "message": "Authentication failed: missing or invalid token",
+            }
         return self._dispatch(command)
 
     def _dispatch(self, command):
