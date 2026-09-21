@@ -655,9 +655,12 @@ class DropLineEdit(QLineEdit):
         print(f"Inicializando DropLineEdit para {file_type}")
         print(f"acceptDrops: {self.acceptDrops()}")
         
-        # Configurar el portapapeles
+        # Solo para pegar con Ctrl+V dentro del campo (ver keyPressEvent).
+        # A propósito NO se conecta a clipboard.dataChanged: esa señal avisa
+        # de lo que el usuario copia en cualquier programa de Windows, y
+        # reaccionar a eso interrumpía con un diálogo de error cada vez que
+        # copiaba una imagen en otra parte con QGIS abierto.
         self.clipboard = QApplication.clipboard()
-        self.clipboard.dataChanged.connect(self.clipboard_data_changed)
         
         # Configurar el estilo inicial
         self.setStyleSheet("""
@@ -1029,15 +1032,6 @@ class DropLineEdit(QLineEdit):
                         padding: 5px;
                     }
                 """)
-
-    def clipboard_data_changed(self):
-        """Maneja cambios en el portapapeles"""
-        mime_data = self.clipboard.mimeData()
-        if mime_data.hasUrls():
-            url = mime_data.urls()[0]
-            file_path = url.toLocalFile()
-            print(f'Clipboard changed - File path: {file_path}')
-            self.handle_file_path(file_path)
 
     def keyPressEvent(self, event):
         """Maneja eventos de teclado para copy/paste"""
@@ -2938,15 +2932,9 @@ class SegmentadorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         # Limpiar widgets personalizados
         try:
             if hasattr(self, 'lineEdit') and self.lineEdit:
-                # Desconectar el portapapeles
-                if hasattr(self.lineEdit, 'clipboard'):
-                    self.lineEdit.clipboard.dataChanged.disconnect(self.lineEdit.clipboard_data_changed)
                 logger.info("lineEdit personalizado limpiado")
                 
             if hasattr(self, 'lineEdit_2') and self.lineEdit_2:
-                # Desconectar el portapapeles
-                if hasattr(self.lineEdit_2, 'clipboard'):
-                    self.lineEdit_2.clipboard.dataChanged.disconnect(self.lineEdit_2.clipboard_data_changed)
                 logger.info("lineEdit_2 personalizado limpiado")
         except Exception as e:
             logger.warning(f"Error al limpiar widgets personalizados: {str(e)}")
