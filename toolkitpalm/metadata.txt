@@ -5,7 +5,7 @@
 name=ToolkitPalm
 qgisMinimumVersion=3.16
 description=Detect and segment oil palm trees and optimise collection points on drone orthomosaics.
-version=1.0.1
+version=1.0.2
 author=Ing. Adán Arias
 email=ingarias9006@gmail.com
 
@@ -31,7 +31,13 @@ homepage=https://github.com/gaminuma06/toolkitpalm
 # Recommended items:
 hasProcessingProvider=no
 
-changelog=1.0.1 - Correcciones del análisis de seguridad del repositorio de QGIS.
+changelog=1.0.2 - Corrección: el plugin dejaba de reaccionar al portapapeles.
+    - Los campos de ortoimagen escuchaban el portapapeles de todo el sistema, así
+      que copiar una imagen en cualquier otro programa —con QGIS abierto, incluso
+      minimizado— abría un aviso de "ortoimagen no válida". Ya no ocurre. Arrastrar
+      el archivo y pegar con Ctrl+V dentro del campo siguen funcionando igual.
+    .
+    1.0.1 - Correcciones del análisis de seguridad del repositorio de QGIS.
     - Los errores que antes se descartaban en silencio ahora quedan registrados,
       para poder diagnosticarlos.
     - El resumen que nombra los archivos de avance pasa de MD5 a SHA-256.
