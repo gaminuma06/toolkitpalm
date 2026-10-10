@@ -199,6 +199,7 @@ _TOOLS = [
     ("detector", "📍 Detector de Palmas"),
     ("segmentador", "🌿 Segmentador de Palmas"),
     ("diseno_plantacion", "🌴 Diseño de Plantación"),
+    ("mapa_calor", "🔥 Mapa de calor"),
     ("llm", "🤖 Asistente (LLM · MCP)"),
     ("optimizador", "🚚 Optimizador de Acopios"),
     ("fotogrametria", "🛩️ Fotogrametría (próximamente)"),
@@ -208,15 +209,15 @@ if not _asistente_disponible():
     _TOOLS = [(k, e) for k, e in _TOOLS if k != "llm"]
 
 # Herramientas visibles pero deshabilitadas: se ven en gris y nadie las abre.
-_DISABLED_TOOLS = {"segmentador", "diseno_plantacion", "optimizador", "fotogrametria"}
+_DISABLED_TOOLS = {"segmentador", "diseno_plantacion", "mapa_calor", "optimizador", "fotogrametria"}
 
 # De las deshabilitadas, las que el administrador (correo en ADMIN_EMAILS, con
 # sesión iniciada) sí puede abrir para seguir desarrollándolas. Para él también
 # se ven en gris, para que no se confundan con las publicadas.
-_TOOLS_SOLO_ADMIN = {"segmentador", "diseno_plantacion", "optimizador", "fotogrametria"}
+_TOOLS_SOLO_ADMIN = {"segmentador", "diseno_plantacion", "mapa_calor", "optimizador", "fotogrametria"}
 
 # Herramientas en desarrollo: se marcan en su bloque de la lista.
-_TOOLS_EN_CONSTRUCCION = {"segmentador", "diseno_plantacion", "optimizador", "fotogrametria"}
+_TOOLS_EN_CONSTRUCCION = {"segmentador", "diseno_plantacion", "mapa_calor", "optimizador", "fotogrametria"}
 
 
 class ToolkitPalmDockWidget(QDockWidget):
@@ -1997,6 +1998,9 @@ class ToolkitPalmDockWidget(QDockWidget):
         elif key == "diseno_plantacion":
             from .diseno_plantacion.dockwidget import DisenoPlantacionDockWidget
             instance = DisenoPlantacionDockWidget(self.iface)
+        elif key == "mapa_calor":
+            from .mapa_calor.dockwidget import MapaCalorDockWidget
+            instance = MapaCalorDockWidget(self.iface)
         elif key == "recortar_bordes":
             from .recortar_bordes.dockwidget import RecortarBordesDockWidget
             instance = RecortarBordesDockWidget(self.iface)
