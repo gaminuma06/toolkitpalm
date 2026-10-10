@@ -225,7 +225,20 @@ from .compat import (
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 9876
 
-_AJUSTE_ACCESO_MCP = "toolkitpalm/assistant/mcp_token"
+def _sesion_de_administrador():
+    """True si la sesión de Google iniciada es la del dueño (ADMIN_EMAILS)."""
+    try:
+        from ..config import ADMIN_EMAILS, ADMIN_API_KEY
+        if not ADMIN_EMAILS or not ADMIN_API_KEY:
+            return False
+        from .. import google_auth
+        return ((google_auth.perfil() or {}).get("email", "") or "").lower() in ADMIN_EMAILS
+    except Exception:
+        logging.getLogger(__name__).debug("No se pudo verificar el administrador", exc_info=True)
+        return False
+
+
+_AJUSTE_ACCESO_MCP ="toolkitpalm/assistant/mcp_token"
 
 
 def token_de_esta_instalacion(regenerar: bool = False) -> str:
@@ -4060,6 +4073,9 @@ class QgisMCPServer(QObject):
         slice_height, slice_width, overlap_ratio, confidence_threshold.
         """
         from ..segmentador.worker import run_segmentation_headless
+        if not _sesion_de_administrador():
+            raise Exception("El Segmentador de Palmas está en construcción y todavía "
+                            "no está disponible.")
         if not image_path or not lotes_path or lot_id is None:
             raise Exception("run_segmentador requiere image_path, lotes_path y lot_id")
         extra = {}

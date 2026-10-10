@@ -163,6 +163,10 @@ CREDITS_CODIGO_CANJEAR_ENDPOINT = f"{CREDITS_BASE_URL}/codigos/canjear"
 # --- Pagos (backend: app/pagos/router.py) ---
 PAGOS_CHECKOUT_ENDPOINT = f"{API_BASE_URL}/apis/pagos/checkout"
 
+# --- Numeración de palmas (backend: app/numeracion/router.py) ---
+# El armado de filas y el cálculo de palmas muertas corren en el servidor.
+NUMERACION_ENDPOINT = f"{API_BASE_URL}/apis/numeracion/numerar"
+
 # Correos que ven la opción de regalar créditos dentro del plugin. Va acá y no
 # en el servidor porque solo controla si el botón aparece; el permiso real lo da
 # la clave de administración, que solo existe en el config_secrets del dueño.

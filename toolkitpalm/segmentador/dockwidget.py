@@ -661,6 +661,9 @@ class DropLineEdit(QLineEdit):
         # reaccionar a eso interrumpía con un diálogo de error cada vez que
         # copiaba una imagen en otra parte con QGIS abierto.
         self.clipboard = QApplication.clipboard()
+
+        if file_type == 'lotes':
+            self.textChanged.connect(self._usar_archivo_shp)
         
         # Configurar el estilo inicial
         self.setStyleSheet("""
@@ -675,6 +678,18 @@ class DropLineEdit(QLineEdit):
             }
         """)
 
+
+    _COMPLEMENTOS_SHAPEFILE = ('.shx', '.dbf', '.prj', '.cpg', '.qpj', '.sbn', '.sbx', '.qix', '.qmd')
+
+    def _usar_archivo_shp(self, texto):
+        """Un shapefile son varios archivos con el mismo nombre; si se eligió uno de
+        los complementarios (.shx, .dbf…), se cambia por el .shp, que es la capa."""
+        base, ext = os.path.splitext(texto.strip())
+        if ext.lower() in self._COMPLEMENTOS_SHAPEFILE:
+            for candidata in (base + '.shp', base + '.SHP'):
+                if os.path.exists(candidata):
+                    self.setText(candidata)
+                    return
     def dragEnterEvent(self, event):
         print(f'Drag Enter en {self.file_type}')
         print(f'MIME formats disponibles: {event.mimeData().formats()}')
@@ -923,7 +938,8 @@ class DropLineEdit(QLineEdit):
                     event.accept()  # Usar accept() en lugar de acceptProposedAction()
                 elif self.file_type == 'lotes' and layer.type() == 0:  # Vector
                     print('Aceptando capa vector en input de lotes')
-                    self.setText(layer.source())
+                    from ..common.capas import fuente_de_capa
+                    self.setText(fuente_de_capa(layer))
                     self.setStyleSheet("""
                         QLineEdit {
                             background-color: white;
@@ -1929,11 +1945,7 @@ class SegmentadorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             if not lotes_path:
                 return
 
-            lotes_layer = None
-            for layer in self.iface.mapCanvas().layers():
-                if isinstance(layer, QgsVectorLayer) and layer.source().lower() == lotes_path.lower():
-                    lotes_layer = layer
-                    break
+            lotes_layer = self._get_lots_layer()
 
             if lotes_layer is None:
                 logger.warning("No se encontró la capa de lotes en el canvas")
@@ -2021,6 +2033,8 @@ class SegmentadorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                     self, "Error", "Indique la ruta del shapefile de lotes."
                 )
                 return
+            if self._get_lots_layer() is not None:
+                lotes_path = self.lineEdit_2.text()
             if not lotes_path or not os.path.exists(lotes_path):
                 logger.error(f"Ruta de shapefile no encontrada: {lotes_path_raw}")
                 if hasattr(self, 'lineEdit_2') and self.lineEdit_2:
@@ -2035,24 +2049,11 @@ class SegmentadorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 self.lineEdit_2.setText(lotes_path)
                 self.lineEdit_2.setStyleSheet("QLineEdit { background-color: white; border: 2px solid #007AAE; border-radius: 4px; padding: 5px; }")
 
-            # Obtener la capa de lotes cargada en QGIS (comparar con ruta resuelta o original)
-            lotes_layer = None
-            for layer in self.iface.mapCanvas().layers():
-                if not isinstance(layer, QgsVectorLayer):
-                    continue
-                src = (layer.source() or "").strip()
-                if not src:
-                    continue
-                if src.lower() == lotes_path.lower() or src.lower() == lotes_path_raw.lower():
-                    lotes_layer = layer
-                    break
-                try:
-                    if os.path.normpath(src) == os.path.normpath(lotes_path) or os.path.normpath(src) == os.path.normpath(lotes_path_raw):
-                        lotes_layer = layer
-                        break
-                except Exception:
-                    logging.getLogger(__name__).debug(
-                        "Fallo no crítico; se continúa.", exc_info=True)
+            # Capa de lotes cargada en QGIS (ver _get_lots_layer). Si se usó otra
+            # capa, la ruta a procesar pasa a ser la de esa capa.
+            lotes_layer = self._get_lots_layer()
+            if lotes_layer is not None:
+                lotes_path = self.lineEdit_2.text()
 
             if lotes_layer is None:
                 logger.error("La capa de lotes no está cargada en el panel de capas")
@@ -3401,20 +3402,23 @@ class SegmentadorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         )
 
     def _get_lots_layer(self):
-        """Retorna la QgsVectorLayer de lotes activa desde lineEdit_2, o None."""
-        lotes_path_raw = getattr(self, 'lineEdit_2', None)
-        if lotes_path_raw and hasattr(lotes_path_raw, 'text'):
-            lotes_path_raw = lotes_path_raw.text()
-        if not lotes_path_raw:
-            return None
-        lotes_path_norm = os.path.normpath(os.path.abspath(lotes_path_raw)).lower()
-        for layer in QgsProject.instance().mapLayers().values():
-            if not isinstance(layer, QgsVectorLayer):
-                continue
-            source = layer.source().replace('file:///', '').replace('file:', '').split('|')[0]
-            if os.path.normpath(os.path.abspath(source)).lower() == lotes_path_norm:
-                return layer
-        return None
+        """Capa de lotes del campo Lotes. Si ese archivo no está cargado pero hay una
+        capa de polígonos con un lote seleccionado (o una sola), usa esa y actualiza
+        el campo con su ruta, para que el proceso lea el lote del archivo correcto."""
+        from ..common.capas import buscar_capa_lotes
+        campo = getattr(self, 'lineEdit_2', None)
+        ruta = campo.text() if campo is not None and hasattr(campo, 'text') else ''
+        capa, ruta_capa, sustituida = buscar_capa_lotes(ruta)
+        if capa is not None and campo is not None and (sustituida or ruta_capa != ruta):
+            campo.setText(ruta_capa)
+            if sustituida:
+                try:
+                    self.iface.messageBar().pushInfo(
+                        "ToolkitPalm",
+                        f"Se usará la capa de lotes «{capa.name()}» cargada en el mapa.")
+                except Exception:
+                    logging.getLogger(__name__).debug("Sin barra de mensajes", exc_info=True)
+        return capa
 
     def _create_auth_badge(self):
         """Crea el badge compacto (pill) que reemplaza el formulario tras el login."""

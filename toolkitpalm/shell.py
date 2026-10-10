@@ -154,6 +154,27 @@ QPushButton {
 }
 """
 
+# En construcción, abierta solo para el administrador: gris como las demás en
+# construcción, pero se puede seleccionar y se marca al estar abierta.
+_CARD_STYLE_ADMIN = """
+QPushButton {
+    text-align: left;
+    padding: 10px 12px;
+    border: none;
+    border-radius: 0px;
+    background-color: transparent;
+    color: #9AA0A6;
+    font-size: 12px;
+}
+QPushButton:hover { background-color: #eef2f6; }
+QPushButton:checked {
+    background-color: #e3e7eb;
+    color: #5f6368;
+    font-weight: bold;
+    border-left: 3px solid #9AA0A6;
+}
+"""
+
 # key -> (etiqueta de la tarjeta, texto usado por el filtro de búsqueda)
 def _asistente_disponible():
     """El Asistente no viaja en el paquete que se publica.
@@ -174,6 +195,7 @@ def _asistente_disponible():
 
 
 _TOOLS = [
+    ("recortar_bordes", "✂️ Recortar bordes de ortofoto"),
     ("detector", "📍 Detector de Palmas"),
     ("segmentador", "🌿 Segmentador de Palmas"),
     ("diseno_plantacion", "🌴 Diseño de Plantación"),
@@ -185,13 +207,16 @@ _TOOLS = [
 if not _asistente_disponible():
     _TOOLS = [(k, e) for k, e in _TOOLS if k != "llm"]
 
-# Herramientas visibles pero deshabilitadas por ahora: quedan al final de la
-# lista, en gris, sin poder abrirse. Se retoman más adelante.
-_DISABLED_TOOLS = {"optimizador", "fotogrametria"}
+# Herramientas visibles pero deshabilitadas: se ven en gris y nadie las abre.
+_DISABLED_TOOLS = {"segmentador", "diseno_plantacion", "optimizador", "fotogrametria"}
 
-# Herramientas que se pueden usar (o se usarán) pero todavía están en desarrollo:
-# se marcan en su bloque de la lista para que quede claro antes de entrar.
-_TOOLS_EN_CONSTRUCCION = {"diseno_plantacion", "optimizador", "fotogrametria"}
+# De las deshabilitadas, las que el administrador (correo en ADMIN_EMAILS, con
+# sesión iniciada) sí puede abrir para seguir desarrollándolas. Para él también
+# se ven en gris, para que no se confundan con las publicadas.
+_TOOLS_SOLO_ADMIN = {"segmentador", "diseno_plantacion", "optimizador", "fotogrametria"}
+
+# Herramientas en desarrollo: se marcan en su bloque de la lista.
+_TOOLS_EN_CONSTRUCCION = {"segmentador", "diseno_plantacion", "optimizador", "fotogrametria"}
 
 
 class ToolkitPalmDockWidget(QDockWidget):
@@ -764,6 +789,29 @@ class ToolkitPalmDockWidget(QDockWidget):
             self._login_label.setText("Iniciar sesión")
             self._credits_label.setVisible(False)
         self._sincronizar_overlay_login()
+        self._aplicar_permisos_herramientas()
+
+    def _aplicar_permisos_herramientas(self):
+        """Las herramientas en construcción se ven en gris para todos; solo el
+        administrador puede abrirlas."""
+        botones = getattr(self, "_buttons", None)
+        if not botones:
+            return  # la lista aún no existe; se aplica al terminar de construirla
+        admin = self._es_administrador()
+        for key in _TOOLS_SOLO_ADMIN:
+            boton = botones.get(key)
+            if boton is None:
+                continue
+            boton.setEnabled(admin)
+            boton.setStyleSheet(_CARD_STYLE_ADMIN if admin else _CARD_STYLE_DISABLED)
+            boton.setCursor(Qt.PointingHandCursor if admin else Qt.ArrowCursor)
+            boton.setToolTip(
+                "En construcción: solo tú puedes abrirla para probarla y seguir "
+                "desarrollándola." if admin else
+                "En construcción: todavía no está disponible.")
+        if (getattr(self, "_current_key", None) in _TOOLS_SOLO_ADMIN and not admin
+                and botones.get("recortar_bordes")):
+            botones["recortar_bordes"].click()
 
     def _refresh_credits_label(self):
         """Lanza la consulta del saldo en segundo plano (ver _CreditsFetcher)."""
@@ -1033,7 +1081,7 @@ class ToolkitPalmDockWidget(QDockWidget):
             button = QPushButton(label)
             button.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
             button.setMinimumHeight(38)
-            if key in _DISABLED_TOOLS:
+            if key in _DISABLED_TOOLS and key not in _TOOLS_SOLO_ADMIN:
                 button.setCheckable(False)
                 button.setFlat(True)
                 button.setEnabled(False)
@@ -1070,6 +1118,7 @@ class ToolkitPalmDockWidget(QDockWidget):
         )
         sidebar_layout.addWidget(autoria)
 
+        self._aplicar_permisos_herramientas()
         return sidebar
 
     def _build_empty_page(self):
@@ -1660,7 +1709,7 @@ class ToolkitPalmDockWidget(QDockWidget):
         Code sigue usando el flujo de terminal de siempre, con un Python normal."""
         port = self._mcp_port_spin.value()
         plugin_dir = os.path.dirname(os.path.abspath(__file__))
-        bridge_dir = os.path.normpath(os.path.join(plugin_dir, "..", "mcp_bridge"))
+        bridge_dir = os.path.join(plugin_dir, "mcp_bridge")
         bridge_script = os.path.join(bridge_dir, "toolkitpalm_bridge.py")
         requirements_file = os.path.join(bridge_dir, "requirements.txt")
         mcpb_file = os.path.join(bridge_dir, "toolkitpalm.mcpb")
@@ -1716,10 +1765,10 @@ class ToolkitPalmDockWidget(QDockWidget):
         <b>Sobre la clave de acceso.</b> Mientras la conexión está encendida, QGIS solo
         atiende a quien presente tu clave, y solo desde este mismo equipo. Eso es lo que
         impide que otro programa instalado en tu computador use la conexión sin permiso.
-        La clave ya va incluida en el comando del Paso 2, así que no tienes que hacer nada
-        con ella — solo <b>no la compartas ni la publiques</b>. Si alguna vez crees que se
-        filtró, presiona <b>"Cambiar"</b> junto a la clave y vuelve a generar estas
-        instrucciones.</p>
+        En Claude Code la clave ya va incluida en el comando del Paso 2; en Claude Desktop
+        la extensión te la pedirá al instalarla. <b>No la compartas ni la publiques</b>. Si
+        alguna vez crees que se filtró, presiona <b>"Cambiar"</b> junto a la clave, vuelve a
+        generar estas instrucciones y actualízala también en Claude.</p>
 
         <p><b>Paso 2 — Conecta tu Claude</b><br>
         Sigue solo la parte que uses (puedes hacer las dos si usas ambas apps). Son procesos
@@ -1741,7 +1790,14 @@ class ToolkitPalmDockWidget(QDockWidget):
         <b>"Instalar extensión..."</b>. Al presionarlo se abrirá el explorador de archivos de
         Windows: pega ahí la ruta que copiaste (Ctrl+V en la barra de direcciones) y presiona
         Enter, o navega hasta ese archivo y ábrelo.</li>
-        <li>Confirma la instalación cuando Claude Desktop te lo pida.</li>
+        <li>Claude Desktop te pedirá la <b>clave de acceso de QGIS</b>. Cópiala de aquí y
+        pégala en ese campo:</li>
+        </ol>
+        {code_block(token)}
+        <p>{self._copy_button_html("token", "📋 Copiar la clave")}</p>
+        <ol start="6">
+        <li>Confirma la instalación. Si alguna vez cambias la clave en QGIS, entra a la
+        configuración de la extensión en Claude Desktop y pega la nueva.</li>
         </ol>
         <p style="color:#888888; font-size:11px;"><i>Nota: la app de Claude Desktop cambia de
         vez en cuando de apariencia — si no encuentras exactamente estos textos, cuéntame qué
@@ -1941,6 +1997,9 @@ class ToolkitPalmDockWidget(QDockWidget):
         elif key == "diseno_plantacion":
             from .diseno_plantacion.dockwidget import DisenoPlantacionDockWidget
             instance = DisenoPlantacionDockWidget(self.iface)
+        elif key == "recortar_bordes":
+            from .recortar_bordes.dockwidget import RecortarBordesDockWidget
+            instance = RecortarBordesDockWidget(self.iface)
 
         if instance is None:
             return None

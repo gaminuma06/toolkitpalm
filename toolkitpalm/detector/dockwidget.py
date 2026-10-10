@@ -729,6 +729,9 @@ class DropLineEdit(QLineEdit):
         # reaccionar a eso interrumpía con un diálogo de error cada vez que
         # copiaba una imagen en otra parte con QGIS abierto.
         self.clipboard = QApplication.clipboard()
+
+        if file_type == 'lotes':
+            self.textChanged.connect(self._usar_archivo_shp)
         
         # Configurar el estilo inicial
         self.setStyleSheet("""
@@ -743,6 +746,18 @@ class DropLineEdit(QLineEdit):
             }
         """)
 
+
+    _COMPLEMENTOS_SHAPEFILE = ('.shx', '.dbf', '.prj', '.cpg', '.qpj', '.sbn', '.sbx', '.qix', '.qmd')
+
+    def _usar_archivo_shp(self, texto):
+        """Un shapefile son varios archivos con el mismo nombre; si se eligió uno de
+        los complementarios (.shx, .dbf…), se cambia por el .shp, que es la capa."""
+        base, ext = os.path.splitext(texto.strip())
+        if ext.lower() in self._COMPLEMENTOS_SHAPEFILE:
+            for candidata in (base + '.shp', base + '.SHP'):
+                if os.path.exists(candidata):
+                    self.setText(candidata)
+                    return
     def dragEnterEvent(self, event):
         print(f'Drag Enter en {self.file_type}')
         print(f'MIME formats disponibles: {event.mimeData().formats()}')
@@ -2571,24 +2586,11 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             logger.info(f"Validación - Archivos seleccionados: {files_selected} (Ortoimagen: {bool(ortoimagen_path)}, Lotes: {bool(lotes_path)})")
             logger.info(f"Validación - Autenticado: {self.is_authenticated}")
             
-            # Verificar si hay un lote seleccionado en el canvas
+            # Verificar si hay un lote seleccionado en la capa de lotes
             lot_selected = False
             try:
-                if lotes_path:
-                    # Normalizar rutas para comparación
-                    import os
-                    lotes_path_normalized = os.path.normpath(os.path.abspath(lotes_path)).lower()
-                    
-                    for layer in self.iface.mapCanvas().layers():
-                        if isinstance(layer, QgsVectorLayer):
-                            layer_source = os.path.normpath(os.path.abspath(layer.source())).lower()
-                            # Comparar rutas normalizadas
-                            if lotes_path_normalized in layer_source or layer_source in lotes_path_normalized:
-                                selected_features = layer.selectedFeatures()
-                                if selected_features:
-                                    lot_selected = True
-                                    logger.info(f"Lote seleccionado encontrado en capa: {layer.name()}, FID: {selected_features[0].id()}")
-                                break
+                capa_lotes = self._get_lots_layer() if lotes_path else None
+                lot_selected = bool(capa_lotes and capa_lotes.selectedFeatureCount() > 0)
             except Exception as e:
                 logger.warning(f"Error al verificar selección de lote: {str(e)}")
             
@@ -3302,58 +3304,9 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             if not lotes_path:
                 return
 
-            # Usar la misma lógica robusta que get_current_selected_lot_id
-            import os
-            lotes_path_normalized = os.path.normpath(os.path.abspath(lotes_path)).lower()
-            
-            # Limpiar prefijos comunes de QGIS
-            if lotes_path_normalized.startswith('file://'):
-                lotes_path_normalized = lotes_path_normalized[7:]
-            if lotes_path_normalized.startswith('file:'):
-                lotes_path_normalized = lotes_path_normalized[5:]
-
-            lotes_layer = None
-            for layer in self.iface.mapCanvas().layers():
-                if isinstance(layer, QgsVectorLayer):
-                    layer_source = layer.source()
-                    
-                    # Limpiar prefijos de QGIS y normalizar
-                    if '|' in layer_source:
-                        layer_source = layer_source.split('|')[0]
-                    
-                    if layer_source.startswith('file://'):
-                        layer_source = layer_source[7:]
-                    if layer_source.startswith('file:'):
-                        layer_source = layer_source[5:]
-                    
-                    layer_source_normalized = os.path.normpath(os.path.abspath(layer_source)).lower()
-                    
-                    # Comparar rutas normalizadas
-                    if lotes_path_normalized in layer_source_normalized or layer_source_normalized in lotes_path_normalized:
-                        selected_features = layer.selectedFeatures()
-                        if selected_features:
-                            lotes_layer = layer
-                            logger.info(f"Capa de lotes encontrada en on_selection_changed: {layer.name()}")
-                            break
-
-            # Si no se encuentra en mapCanvas, buscar en QgsProject
-            if lotes_layer is None:
-                for layer_id, layer in QgsProject.instance().mapLayers().items():
-                    if isinstance(layer, QgsVectorLayer):
-                        layer_source = layer.source()
-                        if '|' in layer_source:
-                            layer_source = layer_source.split('|')[0]
-                        if layer_source.startswith('file://'):
-                            layer_source = layer_source[7:]
-                        if layer_source.startswith('file:'):
-                            layer_source = layer_source[5:]
-                        layer_source_normalized = os.path.normpath(os.path.abspath(layer_source)).lower()
-                        if lotes_path_normalized in layer_source_normalized or layer_source_normalized in lotes_path_normalized:
-                            selected_features = layer.selectedFeatures()
-                            if selected_features:
-                                lotes_layer = layer
-                                logger.info(f"Capa de lotes encontrada en QgsProject: {layer.name()}")
-                                break
+            lotes_layer = self._get_lots_layer()
+            if lotes_layer is not None and not lotes_layer.selectedFeatures():
+                lotes_layer = None
 
             if lotes_layer is None:
                 logger.warning("No se encontró la capa de lotes en el canvas")
@@ -3443,66 +3396,10 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 logger.warning("No se encontró capa de lotes por nombre común")
                 return None
             
-            # Normalizar rutas para comparación (igual que en validate_authentication)
-            import os
-            lotes_path_normalized = os.path.normpath(os.path.abspath(lotes_path)).lower()
-            
-            # Limpiar prefijos comunes de QGIS (file://, etc.)
-            if lotes_path_normalized.startswith('file://'):
-                lotes_path_normalized = lotes_path_normalized[7:]
-            if lotes_path_normalized.startswith('file:'):
-                lotes_path_normalized = lotes_path_normalized[5:]
-
-            lotes_layer = None
-            for layer in self.iface.mapCanvas().layers():
-                if isinstance(layer, QgsVectorLayer):
-                    layer_source = layer.source()
-                    
-                    # Limpiar prefijos de QGIS y normalizar
-                    if '|' in layer_source:
-                        # Si tiene separadores de QGIS, tomar solo la ruta
-                        layer_source = layer_source.split('|')[0]
-                    
-                    # Limpiar prefijos comunes
-                    if layer_source.startswith('file://'):
-                        layer_source = layer_source[7:]
-                    if layer_source.startswith('file:'):
-                        layer_source = layer_source[5:]
-                    
-                    # Normalizar y comparar
-                    layer_source_normalized = os.path.normpath(os.path.abspath(layer_source)).lower()
-                    
-                    # Comparar rutas normalizadas (usar 'in' para mayor flexibilidad)
-                    if lotes_path_normalized in layer_source_normalized or layer_source_normalized in lotes_path_normalized:
-                        selected_features = layer.selectedFeatures()
-                        if selected_features:
-                            lotes_layer = layer
-                            logger.info(f"Capa de lotes encontrada: {layer.name()}")
-                            break
-
-            if lotes_layer is None:
-                logger.warning("No se encontró la capa de lotes en el canvas")
-                # Intentar también con QgsProject para mayor compatibilidad
-                for layer_id, layer in QgsProject.instance().mapLayers().items():
-                    if isinstance(layer, QgsVectorLayer):
-                        layer_source = layer.source()
-                        if '|' in layer_source:
-                            layer_source = layer_source.split('|')[0]
-                        if layer_source.startswith('file://'):
-                            layer_source = layer_source[7:]
-                        if layer_source.startswith('file:'):
-                            layer_source = layer_source[5:]
-                        layer_source_normalized = os.path.normpath(os.path.abspath(layer_source)).lower()
-                        if lotes_path_normalized in layer_source_normalized or layer_source_normalized in lotes_path_normalized:
-                            selected_features = layer.selectedFeatures()
-                            if selected_features:
-                                lotes_layer = layer
-                                logger.info(f"Capa de lotes encontrada en QgsProject: {layer.name()}")
-                                break
-                
-                if lotes_layer is None:
-                    logger.warning("No se encontró la capa de lotes en ningún lugar")
-                    return None
+            lotes_layer = self._get_lots_layer()
+            if lotes_layer is None or not lotes_layer.selectedFeatures():
+                logger.warning("No se encontró la capa de lotes con un lote seleccionado")
+                return None
 
             selected_features = lotes_layer.selectedFeatures()
             if selected_features:
@@ -3622,6 +3519,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 )
                 return
 
+            if self._get_lots_layer() is not None:
+                lotes_path = self.lineEdit_2.text()
             if not lotes_path or not os.path.exists(lotes_path):
                 logger.error(f"Ruta de shapefile inválida: {lotes_path}")
                 QtWidgets.QMessageBox.critical(
@@ -3631,37 +3530,11 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 )
                 return
 
-            # Obtener la capa de lotes cargada en QGIS (comparar rutas normalizadas: QGIS puede devolver otra forma)
-            lotes_path_normalized = os.path.normpath(os.path.abspath(lotes_path)).lower()
-            lotes_layer = None
-            for layer in self.iface.mapCanvas().layers():
-                if not isinstance(layer, QgsVectorLayer):
-                    continue
-                layer_src = _normalize_layer_source_path(layer.source())
-                if not layer_src.lower().endswith(".shp"):
-                    continue
-                try:
-                    layer_path_normalized = os.path.normpath(os.path.abspath(layer_src)).lower()
-                except Exception:
-                    layer_path_normalized = layer_src.lower()
-                if layer_path_normalized == lotes_path_normalized:
-                    lotes_layer = layer
-                    break
-            if lotes_layer is None:
-                # Buscar también en todas las capas del proyecto (por si no está en el canvas)
-                for layer_id, layer in QgsProject.instance().mapLayers().items():
-                    if not isinstance(layer, QgsVectorLayer):
-                        continue
-                    layer_src = _normalize_layer_source_path(layer.source())
-                    if not layer_src.lower().endswith(".shp"):
-                        continue
-                    try:
-                        layer_path_normalized = os.path.normpath(os.path.abspath(layer_src)).lower()
-                    except Exception:
-                        layer_path_normalized = layer_src.lower()
-                    if layer_path_normalized == lotes_path_normalized:
-                        lotes_layer = layer
-                        break
+            # Capa de lotes cargada en QGIS (ver _get_lots_layer). Si se usó otra
+            # capa, la ruta a procesar pasa a ser la de esa capa.
+            lotes_layer = self._get_lots_layer()
+            if lotes_layer is not None:
+                lotes_path = self.lineEdit_2.text()
 
             if lotes_layer is None:
                 logger.error("La capa de lotes no está cargada en el panel de capas")
@@ -4255,7 +4128,9 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         """
         try:
             elegida = self._capa_de_palmas_elegida()
-            if elegida is not None:
+            # Una capa numerada trae palmas muertas calculadas: no sirve como
+            # fuente de palmas detectadas, así que se busca la de detección.
+            if elegida is not None and not elegida.name().startswith('PalmasNumeradas_'):
                 return elegida
         except Exception as e:
             logger.warning(f"No se pudo leer la capa elegida en el selector: {e}")
@@ -4430,8 +4305,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             
             if lotes_path:
                 # Buscar la capa de lotes
-                for layer in self.iface.mapCanvas().layers():
-                    if isinstance(layer, QgsVectorLayer) and layer.source().lower() == lotes_path.lower():
+                for layer in [self._get_lots_layer()]:
+                    if layer is not None:
                         if hasattr(self, 'lot_id') and self.lot_id:
                             try:
                                 feature = layer.getFeature(int(self.lot_id))
@@ -6354,8 +6229,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             
             if lotes_path:
                 # Buscar la capa de lotes
-                for layer in self.iface.mapCanvas().layers():
-                    if isinstance(layer, QgsVectorLayer) and layer.source().lower() == lotes_path.lower():
+                for layer in [self._get_lots_layer()]:
+                    if layer is not None:
                         # Buscar el feature con el FID del lote
                         if hasattr(self, 'lot_id') and self.lot_id:
                             feature = layer.getFeature(int(self.lot_id))
@@ -6586,29 +6461,23 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             self.disconnect_global_signals()
 
     def _get_lots_layer(self):
-        """
-        Returns the active lots QgsVectorLayer from lineEdit_2, or None.
-        Uses os.path.normpath for robust path comparison across slashes and case.
-        """
-        import os
-        from qgis.core import QgsProject, QgsVectorLayer
-
-        lotes_path_raw = getattr(self, 'lineEdit_2', None)
-        if lotes_path_raw and hasattr(lotes_path_raw, 'text'):
-            lotes_path_raw = lotes_path_raw.text()
-        if not lotes_path_raw:
-            return None
-
-        lotes_path_norm = os.path.normpath(os.path.abspath(lotes_path_raw)).lower()
-
-        for layer in QgsProject.instance().mapLayers().values():
-            if not isinstance(layer, QgsVectorLayer):
-                continue
-            source = layer.source().replace('file:///', '').replace('file:', '').split('|')[0]
-            source_norm = os.path.normpath(os.path.abspath(source)).lower()
-            if source_norm == lotes_path_norm:
-                return layer
-        return None
+        """Capa de lotes del campo Lotes. Si ese archivo no está cargado pero hay una
+        capa de polígonos con un lote seleccionado (o una sola), usa esa y actualiza
+        el campo con su ruta, para que el proceso lea el lote del archivo correcto."""
+        from ..common.capas import buscar_capa_lotes
+        campo = getattr(self, 'lineEdit_2', None)
+        ruta = campo.text() if campo is not None and hasattr(campo, 'text') else ''
+        capa, ruta_capa, sustituida = buscar_capa_lotes(ruta)
+        if capa is not None and campo is not None and (sustituida or ruta_capa != ruta):
+            campo.setText(ruta_capa)
+            if sustituida:
+                try:
+                    self.iface.messageBar().pushInfo(
+                        "ToolkitPalm",
+                        f"Se usará la capa de lotes «{capa.name()}» cargada en el mapa.")
+                except Exception:
+                    logging.getLogger(__name__).debug("Sin barra de mensajes", exc_info=True)
+        return capa
 
     def _sync_deviation_button(self, visible):
         """El resaltado acompaña a 'Editar Palmas': tiene sentido sobre la misma
@@ -6730,7 +6599,11 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 if not isinstance(capa, QgsVectorLayer):
                     continue
                 nombre = capa.name()
-                if nombre.startswith('palmas_') or nombre.startswith('detector_palmas_FID'):
+                # Las numeradas también se listan, para poder editarlas (agregar
+                # palmas muertas, cambiar estados); numerar sigue partiendo de
+                # una capa de detección (ver get_latest_palm_layer).
+                if (nombre.startswith('palmas_') or nombre.startswith('detector_palmas_FID')
+                        or nombre.startswith('PalmasNumeradas_')):
                     combo.addItem(nombre, capa.id())
             if seleccion_actual:
                 indice = combo.findData(seleccion_actual)
@@ -7164,7 +7037,6 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         numeración simplemente sigue con la palma que realmente está ahí.
         """
         import math
-        import bisect
 
         if self.exigir_carpeta_de_resultados() is None:
             return None
@@ -7249,90 +7121,19 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             if progress.wasCanceled():
                 return None
 
-        # Coordenadas de la siembra: 'pr' a lo largo de la fila, 'pe' perpendicular.
-        # La base (u, perp) es ortonormal, así que cada palma se describe sin pérdida.
-        projected = [((x * ux + y * uy), (x * perp_ux + y * perp_uy), x, y)
-                     for x, y in real_points]
-
-        base_pe = p1['x'] * perp_ux + p1['y'] * perp_uy
-
-        def _median(values):
-            ordered = sorted(values)
-            return ordered[len(ordered) // 2]
-
-        # Las filas se descubren por los huecos reales de la proyección
-        # perpendicular, no por múltiplos de la separación medida. Con múltiplos,
-        # una fila corta que cayera sobre el límite entre dos de ellos quedaba
-        # repartida entre las filas vecinas y desaparecía; y una fila cuyas palmas
-        # quedaran a ambos lados del límite se partía en dos.
-        # Dentro de una fila las palmas se proyectan casi al mismo valor; al pasar
-        # a la fila siguiente hay un salto cercano a la separación entre filas.
-        ordenados = sorted(projected, key=lambda item: item[1])
-        UMBRAL_FILA = row_spacing * 0.40
-        grupos, actual = [], [ordenados[0]]
-        for anterior, siguiente in zip(ordenados, ordenados[1:]):
-            if siguiente[1] - anterior[1] > UMBRAL_FILA:
-                grupos.append(actual)
-                actual = [siguiente]
-            else:
-                actual.append(siguiente)
-        grupos.append(actual)
-
-        # Si una palma muy corrida "puentea" el hueco entre dos filas vecinas, el
-        # agrupamiento anterior las encadena en una sola. Se reconoce porque el
-        # grupo abarca, de lado a lado, bastante más de lo que ocupa una fila: en
-        # ese caso se parte por su mayor hueco interno, hasta que cada parte entre
-        # en el ancho de una fila.
-        MAX_ANCHO_FILA = row_spacing * 0.75
-
-        def _partir(grupo):
-            if len(grupo) < 2 or grupo[-1][1] - grupo[0][1] <= MAX_ANCHO_FILA:
-                return [grupo]
-            corte = max(range(len(grupo) - 1),
-                        key=lambda i: grupo[i + 1][1] - grupo[i][1])
-            return _partir(grupo[:corte + 1]) + _partir(grupo[corte + 1:])
-
-        separados = []
-        for grupo in grupos:
-            separados.extend(_partir(grupo))
-        if len(separados) > len(grupos):
-            logger.info(f"Se separaron {len(separados) - len(grupos)} filas que habían quedado encadenadas")
-
-        centers = sorted(_median([it[1] for it in grupo]) for grupo in separados)
-
-        # El centro de cada fila es la MEDIANA de sus palmas (no el promedio, para
-        # que una palma corrida no lo arrastre). Reasignar al centro más cercano y
-        # recalcular estabiliza el caso en que una palma muy desviada une dos filas
-        # al agrupar por huecos.
-        refined = {}
-        for _ in range(3):
-            refined = {}
-            for item in projected:
-                pos = bisect.bisect_left(centers, item[1])
-                best_center, best_dist = None, None
-                for idx in (pos - 1, pos, pos + 1):
-                    if 0 <= idx < len(centers):
-                        dist = abs(centers[idx] - item[1])
-                        if best_dist is None or dist < best_dist:
-                            best_center, best_dist = centers[idx], dist
-                refined.setdefault(best_center, []).append(item)
-            nuevos = sorted(_median([it[1] for it in items]) for items in refined.values())
-            if nuevos == centers:
-                break
-            centers = nuevos
-
-        # Las filas se ordenan desde la línea 1 hacia el lado que marcó la línea 2.
-        forward, behind = [], []
-        for center, items in refined.items():
-            offset = (center - base_pe) * side
-            (forward if offset >= -row_spacing * 0.5 else behind).append((offset, items))
-        forward.sort(key=lambda pair: pair[0])
-
-        rows = []
-        for _offset, items in forward:
-            # Dentro de la fila se numera en el sentido que marcó la línea 1.
-            items.sort(key=lambda it: it[0])
-            rows.append([(it[2], it[3]) for it in items])
+        # El armado de las filas y el cálculo de las palmas muertas corren en el
+        # servidor: es el método propio de ToolkitPalm y no viaja en el plugin.
+        anillos = self._anillos_del_lote(lot_id, crs)
+        respuesta = self._numerar_en_servidor(
+            real_points, ux, uy, step, row_spacing,
+            (p1['x'], p1['y']), (q1['x'], q1['y']), side, anillos or [])
+        if respuesta is None:
+            return None
+        rows = [[tuple(p) for p in fila] for fila in respuesta.get("filas", [])]
+        huecos_largos = [tuple(h) for h in respuesta.get("huecos", [])]
+        retiro = respuesta.get("retiro")
+        palmas_detras = int(respuesta.get("palmas_detras") or 0)
+        rows, revisar = self._revisar_muertas_con_imagen(rows, crs, ux, uy, row_spacing)
 
         if not rows:
             QtWidgets.QMessageBox.warning(
@@ -7341,27 +7142,111 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             )
             return None
 
-        palmas_detras = sum(len(items) for _offset, items in behind)
         logger.info(
             f"Filas: {len(rows)}, palmas numeradas: {sum(len(r) for r in rows)}, "
             f"palmas antes de la línea 1 (sin numerar): {palmas_detras}"
         )
 
         return self._write_numbering_layers(
-            rows, crs, lot_id, axis=(ux, uy), palmas_detras=palmas_detras
+            rows, crs, lot_id, axis=(ux, uy), palmas_detras=palmas_detras,
+            huecos_largos=huecos_largos, retiro=retiro if anillos else None
         )
 
-    def _write_numbering_layers(self, rows, crs, lot_id, axis=None, palmas_detras=0):
-        """Crea (reemplazando las anteriores) las capas de palmas numeradas y de
-        líneas. Cada punto es una palma detectada: acá no se inventa ninguno."""
+    def _numerar_en_servidor(self, puntos, ux, uy, paso, separacion, inicio_l1, inicio_l2,
+                             lado, anillos):
+        """Pide al servidor las filas numeradas con sus palmas muertas.
+
+        Devuelve el JSON de respuesta o None (ya avisado al usuario) si no se
+        pudo: sin conexión no hay numeración, a propósito, porque el método no
+        está dentro del plugin."""
+        import requests
+        from ..config import NUMERACION_ENDPOINT
+        from ..client_identity import cabeceras_autenticacion
+
+        cuerpo = {
+            "puntos": [[float(x), float(y)] for x, y in puntos],
+            "ux": float(ux), "uy": float(uy),
+            "paso": float(paso), "separacion": float(separacion),
+            "inicio_l1": [float(inicio_l1[0]), float(inicio_l1[1])],
+            "inicio_l2": [float(inicio_l2[0]), float(inicio_l2[1])],
+            "lado": float(lado),
+            "anillos": [[[float(x), float(y)] for x, y in anillo] for anillo in anillos],
+        }
+        try:
+            r = requests.post(NUMERACION_ENDPOINT, json=cuerpo,
+                              headers=cabeceras_autenticacion(), timeout=180)
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Numeración: sin conexión con el servidor ({e})")
+            QtWidgets.QMessageBox.warning(
+                None, "Sin conexión",
+                "La numeración se calcula en el servidor de ToolkitPalm y no se "
+                "pudo conectar con él.\n\nRevise su conexión a internet e intente de nuevo.")
+            return None
+        if r.status_code == 401:
+            QtWidgets.QMessageBox.warning(
+                None, "Inicie sesión",
+                "Para numerar debe iniciar sesión con su cuenta de Google en ToolkitPalm.")
+            return None
+        if r.status_code != 200:
+            try:
+                detalle = r.json().get("detail", r.text[:200])
+            except ValueError:
+                detalle = r.text[:200]
+            logger.warning(f"Numeración: el servidor respondió {r.status_code}: {detalle}")
+            QtWidgets.QMessageBox.warning(
+                None, "No se pudo numerar", f"El servidor no pudo numerar el lote:\n\n{detalle}")
+            return None
+        return r.json()
+
+    def _anillos_del_lote(self, lot_id, crs):
+        """Contorno del lote (anillos de (x, y)) en el sistema de la numeración."""
+        from qgis.core import QgsCoordinateTransform, QgsGeometry, QgsProject
+        try:
+            capa = self._get_lots_layer()
+            if capa is None or lot_id is None:
+                return None
+            entidad = capa.getFeature(int(lot_id))
+            if not entidad.isValid() or not entidad.hasGeometry():
+                return None
+            geom = QgsGeometry(entidad.geometry())
+            if crs and crs.isValid() and capa.crs().isValid() and capa.crs() != crs:
+                geom.transform(QgsCoordinateTransform(capa.crs(), crs, QgsProject.instance()))
+            poligonos = geom.asMultiPolygon() if geom.isMultipart() else [geom.asPolygon()]
+            return [[(p.x(), p.y()) for p in anillo] for poligono in poligonos for anillo in poligono]
+        except Exception:
+            logger.debug("No se pudo leer el contorno del lote", exc_info=True)
+            return None
+
+    def _revisar_muertas_con_imagen(self, rows, crs, ux, uy, row_spacing):
+        """Marca como 'revisar' las muertas que en la ortofoto tienen verdor de palma."""
+        ruta = self.lineEdit.text().strip() if hasattr(self, 'lineEdit') else ''
+        if not ruta or not os.path.exists(ruta):
+            return rows, 0
+        try:
+            from .revision_imagen import revisar_muertas
+            wkt = crs.toWkt() if crs and crs.isValid() else ''
+            return revisar_muertas(rows, ruta, wkt, ux, uy, row_spacing)
+        except Exception:
+            logger.debug("No se pudo revisar las muertas con la imagen", exc_info=True)
+            return rows, 0
+
+    def _write_numbering_layers(self, rows, crs, lot_id, axis=None, palmas_detras=0,
+                                huecos_largos=None, retiro=None):
+        """Crea (reemplazando las anteriores) las capas de palmas numeradas, de
+        líneas y, si los hay, de huecos largos para revisar.
+
+        Cada fila es una lista de (x, y) o de (x, y, estado, origen): las palmas
+        detectadas son 'viva'; las posiciones sin palma, 'muerta' o 'revisar'."""
         from qgis.core import (QgsVectorLayer, QgsFeature, QgsGeometry, QgsPointXY,
                                QgsField, QgsProject)
         from qgis.PyQt.QtCore import QVariant
+        from .numeracion_filas import VIVA, MUERTA, REVISAR, DETECTADA
 
         points_name = f"PalmasNumeradas_{lot_id}"
         lines_name = f"LineasLote_{lot_id}"
+        huecos_name = f"HuecosRevisar_{lot_id}"
 
-        for name in (points_name, lines_name):
+        for name in (points_name, lines_name, huecos_name):
             for layer in list(QgsProject.instance().mapLayers().values()):
                 if isinstance(layer, QgsVectorLayer) and layer.name() == name:
                     QgsProject.instance().removeMapLayer(layer.id())
@@ -7372,6 +7257,11 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
 
         crs_authid = crs.authid() if crs and crs.isValid() else "EPSG:4326"
 
+        def _normalizar(punto):
+            return tuple(punto) if len(punto) >= 4 else (punto[0], punto[1], VIVA, DETECTADA)
+
+        rows = [[_normalizar(p) for p in row] for row in rows]
+
         points_layer = QgsVectorLayer(f"Point?crs={crs_authid}", points_name, "memory")
         points_layer.dataProvider().addAttributes([
             QgsField("ID", QVariant.Int),
@@ -7380,6 +7270,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             QgsField("X", QVariant.Double),
             QgsField("Y", QVariant.Double),
             QgsField("Lote", QVariant.String),
+            QgsField("Estado", QVariant.String, len=10),
+            QgsField("Origen", QVariant.String, len=10),
         ])
         points_layer.updateFields()
 
@@ -7388,6 +7280,9 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             QgsField("ID", QVariant.Int),
             QgsField("Linea", QVariant.Int),
             QgsField("Palmas", QVariant.Int),
+            QgsField("Vivas", QVariant.Int),
+            QgsField("Muertas", QVariant.Int),
+            QgsField("Revisar", QVariant.Int),
             QgsField("Lote", QVariant.String),
         ])
         lines_layer.updateFields()
@@ -7395,9 +7290,11 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         point_features = []
         line_features = []
         global_id = 1
+        totales = {VIVA: 0, MUERTA: 0, REVISAR: 0}
 
         for line_index, row in enumerate(rows, start=1):
-            for palm_index, (x, y) in enumerate(row, start=1):
+            conteo = {VIVA: 0, MUERTA: 0, REVISAR: 0}
+            for palm_index, (x, y, estado, origen) in enumerate(row, start=1):
                 feature = QgsFeature(points_layer.fields())
                 feature.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(x, y)))
                 feature.setAttribute("ID", global_id)
@@ -7406,17 +7303,25 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                 feature.setAttribute("X", x)
                 feature.setAttribute("Y", y)
                 feature.setAttribute("Lote", lote_display_name)
+                feature.setAttribute("Estado", estado)
+                feature.setAttribute("Origen", origen)
                 point_features.append(feature)
+                conteo[estado] = conteo.get(estado, 0) + 1
                 global_id += 1
+            for k in totales:
+                totales[k] += conteo.get(k, 0)
 
             if len(row) >= 2:
                 line_feature = QgsFeature(lines_layer.fields())
                 line_feature.setGeometry(QgsGeometry.fromPolylineXY(
-                    self._row_line_points(row, axis)
+                    self._row_line_points([(p[0], p[1]) for p in row], axis)
                 ))
                 line_feature.setAttribute("ID", line_index)
                 line_feature.setAttribute("Linea", line_index)
                 line_feature.setAttribute("Palmas", len(row))
+                line_feature.setAttribute("Vivas", conteo[VIVA])
+                line_feature.setAttribute("Muertas", conteo[MUERTA])
+                line_feature.setAttribute("Revisar", conteo[REVISAR])
                 line_feature.setAttribute("Lote", lote_display_name)
                 line_features.append(line_feature)
 
@@ -7424,6 +7329,26 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         lines_layer.dataProvider().addFeatures(line_features)
         points_layer.updateExtents()
         lines_layer.updateExtents()
+
+        huecos_layer = None
+        if huecos_largos:
+            huecos_layer = QgsVectorLayer(f"LineString?crs={crs_authid}", huecos_name, "memory")
+            huecos_layer.dataProvider().addAttributes([
+                QgsField("Linea", QVariant.Int),
+                QgsField("Faltan", QVariant.Int),
+                QgsField("Lote", QVariant.String),
+            ])
+            huecos_layer.updateFields()
+            feats = []
+            for fila, x0, y0, x1, y1, faltan in huecos_largos:
+                f = QgsFeature(huecos_layer.fields())
+                f.setGeometry(QgsGeometry.fromPolylineXY([QgsPointXY(x0, y0), QgsPointXY(x1, y1)]))
+                f.setAttribute("Linea", fila + 1)
+                f.setAttribute("Faltan", faltan)
+                f.setAttribute("Lote", lote_display_name)
+                feats.append(f)
+            huecos_layer.dataProvider().addFeatures(feats)
+            huecos_layer.updateExtents()
 
         # Guardar en disco antes de cargarlas: en memoria se pierden al cerrar
         # QGIS sin guardar el proyecto, y el trabajo de numerar un lote no es
@@ -7434,14 +7359,35 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
             points_layer = puntos_guardado
         if lineas_guardado is not None:
             lines_layer = lineas_guardado
+        if huecos_layer is not None:
+            huecos_guardado = self._guardar_capa_numeracion(huecos_layer, lote_display_name, "huecos", crs)
+            if huecos_guardado is not None:
+                huecos_layer = huecos_guardado
+            QgsProject.instance().addMapLayer(huecos_layer)
+            self._estilo_huecos(huecos_layer)
 
         QgsProject.instance().addMapLayer(lines_layer)
         QgsProject.instance().addMapLayer(points_layer)
 
         self._style_numbering_layers(points_layer, lines_layer)
 
-        mensaje = (f"Se numeraron {len(point_features)} palmas en {len(rows)} líneas.\n\n"
-                   "Todos los puntos corresponden a palmas detectadas: no se agregó ninguno.")
+        total = sum(totales.values())
+        sin_palma = totales[MUERTA] + totales[REVISAR]
+        mensaje = (f"Se numeraron {total} posiciones de siembra en {len(rows)} líneas:\n\n"
+                   f"   Vivas (detectadas): {totales[VIVA]}\n"
+                   f"   Muertas: {totales[MUERTA]}\n"
+                   f"   Para revisar: {totales[REVISAR]}\n")
+        if total:
+            mensaje += f"\nErradicación: {100.0 * sin_palma / total:.1f}% (muertas + para revisar)."
+        if totales[REVISAR]:
+            mensaje += ("\n\n'Para revisar' son posiciones sin palma detectada pero con verdor de "
+                        "palma en la imagen: puede ser una resiembra o una palma que no se detectó.")
+        if huecos_largos:
+            mensaje += (f"\n\nHay {len(huecos_largos)} hueco(s) largo(s) sin rellenar (capa "
+                        f"{huecos_name}): puede ser una vía, un dren o una zona sin sembrar. "
+                        "Revíselos y, si son palmas muertas, agréguelas con la edición de palmas.")
+        if retiro is not None:
+            mensaje += f"\n\nRetiro medido al borde del lote: {retiro:.1f} m."
         if puntos_guardado is not None:
             mensaje += f"\n\nGuardado en:\n{os.path.dirname(puntos_guardado.source())}"
         if palmas_detras:
@@ -7450,6 +7396,17 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
                         "más al borde y repita la numeración.")
         QtWidgets.QMessageBox.information(None, "Numeración completada", mensaje)
         return points_layer
+
+    def _estilo_huecos(self, capa):
+        """Huecos largos: línea naranja punteada, para que salten a la vista."""
+        from qgis.core import QgsLineSymbol, QgsSingleSymbolRenderer
+        try:
+            simbolo = QgsLineSymbol.createSimple(
+                {'color': '255,140,0', 'width': '0.8', 'line_style': 'dash'})
+            capa.setRenderer(QgsSingleSymbolRenderer(simbolo))
+            capa.triggerRepaint()
+        except Exception:
+            logger.debug("No se pudo aplicar el estilo de huecos", exc_info=True)
 
     def _guardar_capa_numeracion(self, capa_memoria, lote, sufijo, crs):
         """Escribe la capa en la carpeta del lote y devuelve la capa ya en disco.
@@ -7494,30 +7451,15 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         return en_disco
 
     def _row_line_points(self, row, axis):
-        """Extremos de la línea de una fila, apoyados en el eje de siembra.
-
-        La línea se apoya en la MEDIANA de la posición perpendicular de sus
-        palmas, no en el promedio ni en los extremos: así una palma corrida de
-        su fila no inclina ni desplaza la línea, y como todas las filas usan el
-        mismo eje medido, quedan paralelas entre sí."""
+        """Trazo de la línea de una fila: sigue su curva real pasando sobre las
+        palmas, suavizado para que una palma corrida no lo tuerza (ver
+        numeracion_filas.linea_de_fila)."""
         from qgis.core import QgsPointXY
+        from .numeracion_filas import linea_de_fila
 
         if not axis:
             return [QgsPointXY(row[0][0], row[0][1]), QgsPointXY(row[-1][0], row[-1][1])]
-
-        ux, uy = axis
-        perp_ux, perp_uy = -uy, ux
-
-        offsets = sorted(x * perp_ux + y * perp_uy for x, y in row)
-        center = offsets[len(offsets) // 2]
-
-        projections = [x * ux + y * uy for x, y in row]
-        start, end = min(projections), max(projections)
-
-        return [
-            QgsPointXY(start * ux + center * perp_ux, start * uy + center * perp_uy),
-            QgsPointXY(end * ux + center * perp_ux, end * uy + center * perp_uy),
-        ]
+        return [QgsPointXY(x, y) for x, y in linea_de_fila(row, axis[0], axis[1])]
 
     def estilo_palmas_numeradas(self, points_layer):
         """Puntos azules con la etiqueta 'L<linea> P<palma>' sobre cada palma.
@@ -7530,10 +7472,8 @@ class DetectorPalmasDockWidget(QtWidgets.QDockWidget, FORM_CLASS):
         from qgis.PyQt.QtGui import QColor, QFont
 
         try:
-            symbol = QgsSymbol.defaultSymbol(points_layer.geometryType())
-            symbol.setColor(QColor(0, 0, 255))
-            symbol.setSize(3)
-            points_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+            from .estilos import simbolos_por_estado
+            simbolos_por_estado(points_layer)
         except Exception as e:
             logger.warning(f"No se pudo aplicar simbología a los puntos: {str(e)}")
 

@@ -2,11 +2,15 @@
 import logging
 from qgis.PyQt.QtWidgets import (QWidget, QHBoxLayout, QVBoxLayout, QPushButton,
                                   QLabel, QLineEdit, QMessageBox)
-from qgis.PyQt.QtCore import Qt, pyqtSignal
+from qgis.PyQt.QtCore import Qt, pyqtSignal, QVariant
 from qgis.PyQt.QtGui import QColor, QPalette, QPainter
 from qgis.gui import QgsMapTool, QgsRubberBand
-from qgis.core import (QgsFeature, QgsGeometry, QgsPointXY,
+from qgis.core import (QgsFeature, QgsGeometry, QgsPointXY, QgsField, QgsVectorLayer,
                        QgsProject, QgsCoordinateTransform, QgsWkbTypes)
+
+# Ciclo del botón "Estado": lo que está para revisar se confirma como viva o
+# muerta; viva y muerta se alternan.
+_SIGUIENTE_ESTADO = {"revisar": "viva", "viva": "muerta", "muerta": "viva"}
 
 _BTN = """
 QPushButton {{
@@ -209,10 +213,15 @@ class PalmEditToolbar(QWidget):
 
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint)
 
+        if self._numbered_mode:
+            self._asegurar_campos_estado()
+
         self._build_ui()
         self._build_tools()
         self._connect_undo_stack()
         self.layer.startEditing()
+        if self._numbered_mode:
+            self._completar_estados_vacios()
         self._reposition()
         self.show()
         self.raise_()
@@ -241,8 +250,26 @@ class PalmEditToolbar(QWidget):
         self.btn_redo = _make_btn("↪ Rehacer")
         self.btn_save = _make_btn("✓ Guardar y salir", bg='#059669', hv='#047857')
 
-        for b in (self.btn_add, self.btn_move, self.btn_del, self.btn_id,
-                  self.btn_undo, self.btn_redo, self.btn_save):
+        botones = [self.btn_add, self.btn_move, self.btn_del, self.btn_id]
+        self.btn_dead = self.btn_state = None
+        if self._numbered_mode:
+            # Palmas muertas: se agregan con un clic y, al guardar, se renumera
+            # cada línea para que la secuencia quede corrida y sin huecos.
+            self.btn_dead = _make_btn("☠ Muerta", bg='#b91c1c', hv='#991b1b')
+            self.btn_dead.setToolTip("Clic en el mapa para agregar una palma muerta (roja).")
+            self.btn_state = _make_btn("⇄ Estado")
+            self.btn_state.setToolTip(
+                "Clic sobre una palma para cambiar su estado: "
+                "para revisar → viva → muerta → viva.")
+            botones += [self.btn_dead, self.btn_state]
+        self.btn_fill = None
+        if self._numbered_mode and self._capa_huecos() is not None:
+            self.btn_fill = _make_btn("▭ Rellenar hueco", bg='#c2410c', hv='#9a3412')
+            self.btn_fill.setToolTip(
+                "Clic sobre una línea naranja punteada (hueco largo) para llenarlo "
+                "de palmas, eligiendo si son muertas o vivas.")
+            botones.append(self.btn_fill)
+        for b in botones + [self.btn_undo, self.btn_redo, self.btn_save]:
             top.addWidget(b)
         root.addLayout(top)
 
@@ -296,6 +323,11 @@ class PalmEditToolbar(QWidget):
         self.btn_move.clicked.connect(self._on_move)
         self.btn_del.clicked.connect(self._on_delete)
         self.btn_id.clicked.connect(self._on_edit_id)
+        if self.btn_dead is not None:
+            self.btn_dead.clicked.connect(self._on_dead)
+            self.btn_state.clicked.connect(self._on_state)
+        if self.btn_fill is not None:
+            self.btn_fill.clicked.connect(self._on_fill)
         self.btn_undo.clicked.connect(lambda: self.layer.undoStack().undo())
         self.btn_redo.clicked.connect(lambda: self.layer.undoStack().redo())
         self.btn_save.clicked.connect(self._save)
@@ -310,6 +342,16 @@ class PalmEditToolbar(QWidget):
 
         self._tool_add.point_clicked.connect(self._on_point_selected)
         self._tool_edit.feature_clicked.connect(self._on_feature_for_edit)
+
+        self._tool_dead = AddPalmTool(self.canvas)
+        self._tool_dead.point_clicked.connect(self._on_dead_point)
+        self._tool_state = EditIdTool(self.canvas, self.layer)
+        self._tool_state.feature_clicked.connect(self._on_toggle_state)
+
+        huecos = self._capa_huecos()
+        self._tool_fill = EditIdTool(self.canvas, huecos) if huecos is not None else None
+        if self._tool_fill is not None:
+            self._tool_fill.feature_clicked.connect(self._on_fill_gap)
 
     def _connect_undo_stack(self):
         stack = self.layer.undoStack()
@@ -362,6 +404,165 @@ class PalmEditToolbar(QWidget):
         self._hide_id_row()
         self._set_active(self.btn_id)
         self.canvas.setMapTool(self._tool_edit)
+
+    def _on_dead(self):
+        self._hide_id_row()
+        self._set_active(self.btn_dead)
+        self.canvas.setMapTool(self._tool_dead)
+
+    def _on_state(self):
+        self._hide_id_row()
+        self._set_active(self.btn_state)
+        self.canvas.setMapTool(self._tool_state)
+
+    def _on_fill(self):
+        self._hide_id_row()
+        self._set_active(self.btn_fill)
+        self.canvas.setMapTool(self._tool_fill)
+
+    # ── Rellenar hueco largo ─────────────────────────────────────────────────
+
+    def _capa_huecos(self):
+        nombre = self.layer.name()
+        if not nombre.startswith("PalmasNumeradas_"):
+            return None
+        buscado = "HuecosRevisar_" + nombre[len("PalmasNumeradas_"):]
+        for capa in QgsProject.instance().mapLayers().values():
+            if isinstance(capa, QgsVectorLayer) and capa.name() == buscado:
+                return capa
+        return None
+
+    def _paso_de_linea(self, linea):
+        """Distancia típica entre palmas consecutivas de una línea."""
+        # Solo las ya numeradas: las recién agregadas aún no tienen número
+        # (Palma = 0) y no indican el orden de la fila.
+        puntos = sorted(((f['Palma'], f.geometry().asPoint())
+                         for f in self.layer.getFeatures()
+                         if f['Linea'] == linea and f['Palma']),
+                        key=lambda t: t[0])
+        distancias = sorted(a[1].distance(b[1]) for a, b in zip(puntos, puntos[1:]))
+        return distancias[len(distancias) // 2] if distancias else None
+
+    def _extremos_hueco(self, hueco):
+        """Inicio y fin del hueco en el sistema de la capa de palmas."""
+        geom = QgsGeometry(hueco.geometry())
+        if geom.isMultipart():
+            vertices = [p for parte in geom.asMultiPolyline() for p in parte]
+        else:
+            vertices = geom.asPolyline()
+        if len(vertices) < 2:
+            return None
+        huecos = self._capa_huecos()
+        if huecos is not None and huecos.crs() != self.layer.crs():
+            xf = QgsCoordinateTransform(huecos.crs(), self.layer.crs(), QgsProject.instance())
+            vertices = [xf.transform(p) for p in vertices]
+        return vertices[0], vertices[-1]
+
+    def _hueco_relleno(self, hueco):
+        """True si hoy hay palmas dentro del hueco (sin contar las de sus extremos).
+
+        Se mira la capa tal como está, y no una anotación aparte: así deshacer
+        el relleno deja el hueco pendiente otra vez."""
+        extremos = self._extremos_hueco(hueco)
+        linea = hueco['Linea']
+        if extremos is None or not linea:
+            return False
+        inicio, fin = extremos
+        tramo = QgsGeometry.fromPolylineXY([inicio, fin])
+        paso = self._paso_de_linea(linea) or 9.0
+        for f in self.layer.getFeatures():
+            if f['Linea'] != linea:
+                continue
+            p = f.geometry().asPoint()
+            if (tramo.distance(QgsGeometry.fromPointXY(p)) < 1.5
+                    and p.distance(inicio) > 0.25 * paso and p.distance(fin) > 0.25 * paso):
+                return True
+        return False
+
+    def _on_fill_gap(self, hueco):
+        if self._hueco_relleno(hueco):
+            QMessageBox.information(self, "Rellenar hueco", "Ese hueco ya tiene palmas.")
+            return
+        linea = hueco['Linea']
+        extremos = self._extremos_hueco(hueco)
+        if extremos is None or not linea:
+            return
+        inicio, fin = extremos
+        largo = inicio.distance(fin)
+        paso = self._paso_de_linea(linea)
+        if not paso or largo < paso * 0.5:
+            return
+
+        # Hueco entre dos palmas: posiciones repartidas en partes iguales. Hueco
+        # hacia el borde: una posición cada paso, desde la última palma.
+        def hay_palma(p):
+            return any(f.geometry().asPoint().distance(p) < 1.5
+                       for f in self.layer.getFeatures() if f['Linea'] == linea)
+
+        if hay_palma(inicio) and hay_palma(fin):
+            n = max(1, int(round(largo / paso)) - 1)
+            fracciones = [j / float(n + 1) for j in range(1, n + 1)]
+        else:
+            n = int(largo / paso + 0.1)
+            fracciones = [j * paso / largo for j in range(1, n + 1)]
+        if n < 1:
+            return
+
+        dialogo = QMessageBox(self)
+        dialogo.setWindowTitle("Rellenar hueco")
+        dialogo.setText(f"En este hueco de la línea {linea} caben {n} palmas.\n\n"
+                        "¿Qué es este hueco?")
+        b_muertas = dialogo.addButton("Muertas (erradicadas)", QMessageBox.AcceptRole)
+        b_vivas = dialogo.addButton("Vivas", QMessageBox.AcceptRole)
+        b_quitar = dialogo.addButton("No son palmas: quitar hueco", QMessageBox.DestructiveRole)
+        dialogo.addButton("Cancelar", QMessageBox.RejectRole)
+        dialogo.exec_()
+        elegido = dialogo.clickedButton()
+        if elegido is b_quitar:
+            self._quitar_hueco(hueco)
+            return
+        if elegido not in (b_muertas, b_vivas):
+            return
+        estado = "muerta" if elegido is b_muertas else "viva"
+
+        siguiente = self._next_id()
+        for k, f in enumerate(fracciones):
+            punto = QgsPointXY(inicio.x() + (fin.x() - inicio.x()) * f,
+                               inicio.y() + (fin.y() - inicio.y()) * f)
+            self._add_palm(punto, siguiente + k, linea, 0, estado=estado,
+                           origen="manual", en_capa=True)
+
+    # ── Palmas muertas ────────────────────────────────────────────────────────
+
+    def _asegurar_campos_estado(self):
+        """Las capas numeradas antes de existir las palmas muertas no traen
+        Estado ni Origen: se agregan al abrir la edición."""
+        faltan = [n for n in ("Estado", "Origen") if self.layer.fields().indexOf(n) < 0]
+        if not faltan:
+            return
+        self.layer.dataProvider().addAttributes(
+            [QgsField(n, QVariant.String, len=10) for n in faltan])
+        self.layer.updateFields()
+
+    def _completar_estados_vacios(self):
+        i_est = self.layer.fields().indexOf("Estado")
+        i_ori = self.layer.fields().indexOf("Origen")
+        for f in self.layer.getFeatures():
+            if not f["Estado"]:
+                self.layer.changeAttributeValue(f.id(), i_est, "viva")
+            if not f["Origen"]:
+                self.layer.changeAttributeValue(f.id(), i_ori, "detectada")
+
+    def _on_dead_point(self, point):
+        # Línea y palma se calculan al guardar (ver _renumerar).
+        self._add_palm(point, self._next_id(), 0, 0, estado="muerta", origen="manual")
+
+    def _on_toggle_state(self, feat):
+        actual = feat["Estado"] or "viva"
+        self.layer.changeAttributeValue(
+            feat.id(), self.layer.fields().indexOf("Estado"),
+            _SIGUIENTE_ESTADO.get(actual, "viva"))
+        self.canvas.refresh()
 
     # ── Add palm flow ─────────────────────────────────────────────────────────
 
@@ -428,10 +629,13 @@ class PalmEditToolbar(QWidget):
 
         self._hide_id_row()
 
-    def _add_palm(self, point, palm_id, linea=None, palma=None):
+    def _add_palm(self, point, palm_id, linea=None, palma=None, estado="viva", origen="manual",
+                  en_capa=False):
+        """Agrega una palma. `point` viene en el sistema del mapa, salvo que
+        `en_capa` indique que ya está en el de la capa."""
         canvas_crs = self.canvas.mapSettings().destinationCrs()
         layer_crs  = self.layer.crs()
-        if canvas_crs != layer_crs:
+        if not en_capa and canvas_crs != layer_crs:
             point = QgsCoordinateTransform(
                 canvas_crs, layer_crs, QgsProject.instance()).transform(point)
 
@@ -449,6 +653,10 @@ class PalmEditToolbar(QWidget):
             feat['Linea'] = linea
         if self._numbered_mode and palma is not None:
             feat['Palma'] = palma
+        if fields.indexOf('Estado') >= 0:
+            feat['Estado'] = estado
+        if fields.indexOf('Origen') >= 0:
+            feat['Origen'] = origen
         self.layer.addFeature(feat)
         self.canvas.refresh()
 
@@ -484,7 +692,130 @@ class PalmEditToolbar(QWidget):
                 "No se pudieron guardar los cambios en el shapefile.\n"
                 "Revise que el archivo no esté bloqueado por otra aplicación.")
             return
+        if self._numbered_mode:
+            try:
+                self._quitar_huecos_rellenados()
+                self._renumerar()
+            except Exception as e:
+                logging.getLogger(__name__).warning("No se pudo renumerar", exc_info=True)
+                QMessageBox.warning(
+                    self, "Renumeración incompleta",
+                    f"Los cambios se guardaron, pero no se pudo renumerar:\n{e}")
         self._cleanup_and_close()
+
+    def _quitar_hueco(self, hueco):
+        """Quita la línea naranja de un hueco que no corresponde a palmas (un dren,
+        una vía…). Se pide confirmación porque no entra en Deshacer: Deshacer
+        trabaja sobre las palmas, y el hueco es otra capa."""
+        respuesta = QMessageBox.question(
+            self, "Quitar hueco",
+            f"¿Quitar el hueco de la línea {hueco['Linea']}?\n\n"
+            "Se quita ahora y no se puede deshacer con el botón Deshacer. "
+            "Si se quita por error, se recupera numerando de nuevo el lote.",
+            QMessageBox.Yes | QMessageBox.No)
+        if respuesta != QMessageBox.Yes:
+            return
+        huecos = self._capa_huecos()
+        if huecos is None:
+            return
+        huecos.startEditing()
+        huecos.deleteFeature(hueco.id())
+        if not huecos.commitChanges():
+            QMessageBox.warning(self, "Quitar hueco", "No se pudo quitar el hueco.")
+            return
+        huecos.triggerRepaint()
+        self.canvas.refresh()
+
+    def _quitar_huecos_rellenados(self):
+        """Un hueco que quedó con palmas deja de estar pendiente: se quita su
+        línea naranja. Se decide con las palmas guardadas, así que un relleno
+        deshecho no borra el hueco."""
+        huecos = self._capa_huecos()
+        if huecos is None:
+            return
+        rellenos = [h.id() for h in huecos.getFeatures() if self._hueco_relleno(h)]
+        if not rellenos:
+            return
+        huecos.startEditing()
+        for fid in rellenos:
+            huecos.deleteFeature(fid)
+        huecos.commitChanges()
+        huecos.triggerRepaint()
+
+    # ── Renumerar después de editar ──────────────────────────────────────────
+
+    def _capa_de_lineas(self):
+        nombre = self.layer.name()
+        if not nombre.startswith("PalmasNumeradas_"):
+            return None
+        buscado = "LineasLote_" + nombre[len("PalmasNumeradas_"):]
+        for capa in QgsProject.instance().mapLayers().values():
+            if isinstance(capa, QgsVectorLayer) and capa.name() == buscado:
+                return capa
+        return None
+
+    def _renumerar(self):
+        """Ordena cada línea, numera las palmas desde 1 sin huecos, asigna a su
+        línea las palmas nuevas y redibuja las líneas pasando por todas."""
+        from .numeracion_filas import renumerar, linea_de_fila
+        from .estilos import simbolos_por_estado
+
+        feats = {f.id(): f for f in self.layer.getFeatures()}
+        puntos = []
+        for fid, f in feats.items():
+            p = f.geometry().asPoint()
+            puntos.append((fid, p.x(), p.y(), f['Linea'] or 0, f['Palma'] or 0))
+        asignacion, filas = renumerar(puntos)
+
+        campos = self.layer.fields()
+        i_lin, i_pal = campos.indexOf('Linea'), campos.indexOf('Palma')
+        i_id = campos.indexOf(self._id_field)
+        self.layer.startEditing()
+        nuevo_id = 1
+        for linea in sorted(filas):
+            for fid in filas[linea]:
+                l, p = asignacion[fid]
+                self.layer.changeAttributeValues(fid, {i_lin: l, i_pal: p, i_id: nuevo_id})
+                nuevo_id += 1
+        if not self.layer.commitChanges():
+            raise RuntimeError("no se pudieron escribir los números nuevos")
+
+        lineas = self._capa_de_lineas()
+        if lineas is not None:
+            faltan = [n for n in ("Vivas", "Muertas", "Revisar")
+                      if lineas.fields().indexOf(n) < 0]
+            if faltan:
+                lineas.dataProvider().addAttributes([QgsField(n, QVariant.Int) for n in faltan])
+                lineas.updateFields()
+            lote = next((f['Lote'] for f in feats.values() if f['Lote']), "")
+            lineas.startEditing()
+            for f in list(lineas.getFeatures()):
+                lineas.deleteFeature(f.id())
+            for linea in sorted(filas):
+                coords = [feats[fid].geometry().asPoint() for fid in filas[linea]]
+                if len(coords) < 2:
+                    continue
+                xy = [(c.x(), c.y()) for c in coords]
+                ux, uy = xy[-1][0] - xy[0][0], xy[-1][1] - xy[0][1]
+                norma = (ux * ux + uy * uy) ** 0.5 or 1.0
+                trazo = linea_de_fila(xy, ux / norma, uy / norma)
+                estados = [feats[fid]['Estado'] or 'viva' for fid in filas[linea]]
+                nueva = QgsFeature(lineas.fields())
+                nueva.setGeometry(QgsGeometry.fromPolylineXY([QgsPointXY(x, y) for x, y in trazo]))
+                valores = {'ID': linea, 'Linea': linea, 'Palmas': len(xy), 'Lote': lote,
+                           'Vivas': estados.count('viva'), 'Muertas': estados.count('muerta'),
+                           'Revisar': estados.count('revisar')}
+                for campo, valor in valores.items():
+                    if lineas.fields().indexOf(campo) >= 0:
+                        nueva[campo] = valor
+                lineas.addFeature(nueva)
+            if not lineas.commitChanges():
+                raise RuntimeError("no se pudieron redibujar las líneas")
+            lineas.triggerRepaint()
+
+        simbolos_por_estado(self.layer)
+        self.layer.triggerRepaint()
+        self.canvas.refresh()
 
     def _cleanup_and_close(self):
         try:
